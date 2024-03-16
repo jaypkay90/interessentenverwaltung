@@ -17,6 +17,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,6 +36,8 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 
 import javax.swing.JTextField;
+import javax.swing.RowFilter;
+
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
@@ -247,35 +250,37 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		// Text Field in der HashMap suchen
 		JTextField selectedField = (JTextField) e.getSource();
 		String colName = textFieldMap.get(selectedField);
-		//filterTable();
-		//int colNum = findColumnNumber(colName);
-		
-		//if (colNum != -1) {
-		myTableRowSorter.setRowFilter(new MyRowFilter(selectedField.getText(), table.getColumnCount()));
-		//}
-				
-				
+		int colNum = findColumnNumber(colName);
+		filterTable();
 	}
 	
-	public void filterTable() {
-		//MyRowFilter tableFilter = new MyRowFilter();
-		//myTableRowSorter.setRowFilter(tableFilter);					
+	public void filterTable() {				
+		RowFilter<TableModel, Object>[] colFilters = new RowFilter[textFieldMap.size()];
+		int i = 0;
 		
 		// Durch Hashmap mit JTextfields loopen
-		for (Map.Entry<JTextField, String> entry : textFieldMap.entrySet()) {
+		for (Map.Entry<JTextField, String> entry : textFieldMap.entrySet()) {			
 			// Textfield und column Name des akt. Entrys bekmmen
 			JTextField currentField = entry.getKey();
 			String colName = entry.getValue();
 			String searchText = currentField.getText();
+			int colNum = findColumnNumber(colName);
 			
-			// Im Textfield nachsehen, ob Suchtext drin steht, falls ja...
-			if (!(searchText.equals(""))) {
-				// Suche die colNum mit dem entsprechenden Namen im JTable
-				int colNum = findColumnNumber(colName);
-				
-				// Filter zur entsprechenden col im
-				}
+			// Filter für akt. Col. zum Filter-Array hinzufügen, wenn Suchtext nicht leer ist
+			if (searchText != "") {
+				colFilters[i] = RowFilter.regexFilter(currentField.getText(), colNum);
+				i++;
 			}
+		}
+		
+		// Array kopieren und alle leeren Plätze rauswerfen
+		RowFilter<TableModel, Object>[] validFilters = Arrays.copyOf(colFilters, i);
+		
+		// Filter von allen Cols kombinieren
+		RowFilter<TableModel, Object> compoundFilter = RowFilter.andFilter(Arrays.asList(validFilters));
+		
+		// Kombinierten Filter zum RowSorter hinzufügen
+		myTableRowSorter.setRowFilter(compoundFilter);
 			
 		}
 		
