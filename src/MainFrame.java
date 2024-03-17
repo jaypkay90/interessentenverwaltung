@@ -104,6 +104,11 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		JMenuItem closeItem = new JMenuItem("Schließen");
 		fileMenu.add(closeItem);
 		
+		JMenuItem addUser = new JMenuItem("Benutzer hinzufügen");
+		addUser.setActionCommand("addNewUser");
+		addUser.addActionListener(this);
+		fileMenu.add(addUser);
+		
 		JMenu helpMenu = new JMenu("Hilfe");
 		menuBar.add(helpMenu);
 		
@@ -228,7 +233,11 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	// ActionListener für Buttons
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		// TODO Auto-generated method stub
+		String command = e.getActionCommand();
+		switch (command) {
+		case "addNewUser":
+			new ProspectsPopUpFrame(colNames);
+		}
 		
 	}
 	
