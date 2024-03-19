@@ -83,7 +83,9 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	
 	public MainFrame() {
 		// Mit Database verbinden
-		connectToDatabase();
+		Database base = new Database();
+		base.connectToDatabase();
+		statement = base.getStatement();
 		
 		setIconImage(Toolkit.getDefaultToolkit().getImage("D:\\Beruf\\Ausbildung\\Eclipse Workspace\\JP Interessentenverwaltung\\MainIcon.png"));
 		setTitle("Interessentenverwaltung");
@@ -149,8 +151,8 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	}
 	
 	private void createDataTable(String query) {	
-		table = new JTable();
 		getTableData(query);		
+		table = new JTable(model);
 		
 		
 		// Scrollbar und Tablesorter zum JTable hinzufügen
@@ -171,7 +173,8 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		try {
 			rs = statement.executeQuery(query);
 			
-			model = (DefaultTableModel) table.getModel();
+			model = MyTableModel.getModel();
+			//model = (DefaultTableModel) table.getModel();
 			
 			// Spaltenanzahl bekommen
 			ResultSetMetaData rsmetadata = rs.getMetaData();
@@ -202,7 +205,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		}
 	}
 	
-	private void connectToDatabase() {
+	/*private void connectToDatabase() {
 		// JDBC URL
 	    String url = "jdbc:sqlite:prospectsData.db";
 	   
@@ -210,12 +213,11 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	    	Class.forName("org.sqlite.JDBC");
 	    	Connection conn = DriverManager.getConnection(url);
 	    	statement = conn.createStatement();
-	        
-
+	    	
 	    } catch (SQLException | ClassNotFoundException e) {
 	        e.printStackTrace();
 	    }
-	}
+	}*/
 	
 	 private int findColumnNumber(String columnName) {
         TableColumnModel columnModel = table.getColumnModel();
