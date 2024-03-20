@@ -114,11 +114,18 @@ private int selectedRow;
 		JPanel actionPanel = new JPanel();
 		JButton saveBtn = new JButton("Speichern");
 		JButton abortBtn = new JButton("Abbrechen");
+		JButton deleteBtn = new JButton("Löschen");
+		
 		saveBtn.setActionCommand("save");
 		abortBtn.setActionCommand("abort");
+		deleteBtn.setActionCommand("delete");
+		
 		saveBtn.addActionListener(this);
 		abortBtn.addActionListener(this);
+		deleteBtn.addActionListener(this);
+		
 		actionPanel.add(saveBtn);
+		actionPanel.add(deleteBtn);
 		actionPanel.add(abortBtn);
 		actionPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
 		
@@ -159,6 +166,27 @@ private int selectedRow;
 		String command = e.getActionCommand();
 		
 		if (command.equals("abort")) {
+			frame.dispose();
+		}
+		else if (command.equals("delete")) {
+			try {
+				MyTableModel model = MyTableModel.getModel();
+				
+				// Eintrag aus der Datenbank löschen
+				System.out.println(rowData.get("id"));
+				statement.executeUpdate(String.format("DELETE FROM prospects WHERE id = %s", rowData.get("id")));
+				
+				// Reihe aus dem JTable löschen
+				model.removeRow(selectedRow);
+				model.fireTableDataChanged();
+				
+				// Statement schließen
+				statement.close();
+				
+			} catch (SQLException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
 			frame.dispose();
 		}
 		else if (command.equals("save")) {

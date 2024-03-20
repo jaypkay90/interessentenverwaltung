@@ -107,6 +107,8 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		menuBar.add(fileMenu);
 		
 		JMenuItem closeItem = new JMenuItem("Schließen");
+		closeItem.setActionCommand("exit");
+		closeItem.addActionListener(this);
 		fileMenu.add(closeItem);
 		
 		JMenuItem addUser = new JMenuItem("Benutzer hinzufügen");
@@ -258,6 +260,10 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		switch (command) {
 		case "addNewUser":
 			new ProspectsPopUpFrame(colNames);
+			break;
+		case "exit":
+			System.exit(0);
+			break;
 		}
 		
 	}
