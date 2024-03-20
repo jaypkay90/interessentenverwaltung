@@ -18,6 +18,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,6 +43,8 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 public class MainFrame extends JFrame implements KeyListener, ActionListener {
 
@@ -153,11 +156,26 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	private void createDataTable(String query) {	
 		getTableData(query);		
 		table = new JTable(model);
+		table.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				int selectedRow = table.getSelectedRow();
+				
+				// Daten aus der selektierten Reihe auslesen
+				HashMap<String, String> rowData = new HashMap<>();
+				for (int i = 0; i < colNames.length; i++) {
+					rowData.put(colNames[i], model.getValueAt(selectedRow, i).toString());
+				}
+				
+				// ProspectsPopUp öffnen und userdaten in die Felder einfügen
+				ProspectsPopUpFrame editUserFrame = new ProspectsPopUpFrame(colNames, rowData, selectedRow);
+			}
+		});
 		
 		
 		// Scrollbar und Tablesorter zum JTable hinzufügen
 		JScrollPane scrollPane = new JScrollPane(table);
-		myTableRowSorter = new TableRowSorter(model);
+		myTableRowSorter = new TableRowSorter<>(model);
 		table.setRowSorter(myTableRowSorter);
 		
 		centerPanel.setLayout(new BorderLayout(0, 0));
@@ -191,6 +209,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 			
 			// Daten aus der Datenbank auslesen, solange es noch welche gibt...
 			while (rs.next()) {
+				
 			    String[] row = new String[colCount];
 			    for (int i = 0; i < colCount; i++) {
 			        row[i] = rs.getString(i + 1);
@@ -226,10 +245,10 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
             TableColumn column = columnModel.getColumn(i);
             String currentColumnName = (String) column.getHeaderValue();
             if (currentColumnName.equals(columnName)) {
-                return i; // Return the column number if the names match
+                return i; 
             }
         }
-        return -1; // Return -1 if the column is not found
+        return -1; // Return -1, wenn Spalte nicht gefunden
     }
 	
 	// ActionListener für Buttons
