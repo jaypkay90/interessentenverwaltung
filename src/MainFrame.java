@@ -18,6 +18,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,6 +43,8 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 public class MainFrame extends JFrame implements KeyListener, ActionListener {
 
@@ -71,8 +74,6 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 			}
 		});
 		
-		// Datenbankverbindung trennen
-		
 	}
 
 	/**
@@ -83,7 +84,9 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	
 	public MainFrame() {
 		// Mit Database verbinden
-		connectToDatabase();
+		Database base = new Database();
+		base.connectToDatabase();
+		statement = base.getStatement();
 		
 		setIconImage(Toolkit.getDefaultToolkit().getImage("D:\\Beruf\\Ausbildung\\Eclipse Workspace\\JP Interessentenverwaltung\\MainIcon.png"));
 		setTitle("Interessentenverwaltung");
@@ -102,7 +105,14 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		menuBar.add(fileMenu);
 		
 		JMenuItem closeItem = new JMenuItem("Schließen");
+		closeItem.setActionCommand("exit");
+		closeItem.addActionListener(this);
 		fileMenu.add(closeItem);
+		
+		JMenuItem addUser = new JMenuItem("Benutzer hinzufügen");
+		addUser.setActionCommand("addNewUser");
+		addUser.addActionListener(this);
+		fileMenu.add(addUser);
 		
 		JMenu helpMenu = new JMenu("Hilfe");
 		menuBar.add(helpMenu);
@@ -144,13 +154,28 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	}
 	
 	private void createDataTable(String query) {	
-		table = new JTable();
 		getTableData(query);		
+		table = new JTable(model);
+		table.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				int selectedRow = table.getSelectedRow();
+				
+				// Daten aus der selektierten Reihe auslesen
+				HashMap<String, String> rowData = new HashMap<>();
+				for (int i = 0; i < colNames.length; i++) {
+					rowData.put(colNames[i], model.getValueAt(selectedRow, i).toString());
+				}
+				
+				// ProspectsPopUp öffnen und userdaten in die Felder einfügen
+				ProspectsPopUpFrame editUserFrame = new ProspectsPopUpFrame(colNames, rowData, selectedRow);
+			}
+		});
 		
 		
 		// Scrollbar und Tablesorter zum JTable hinzufügen
 		JScrollPane scrollPane = new JScrollPane(table);
-		myTableRowSorter = new TableRowSorter(model);
+		myTableRowSorter = new TableRowSorter<>(model);
 		table.setRowSorter(myTableRowSorter);
 		
 		centerPanel.setLayout(new BorderLayout(0, 0));
@@ -166,7 +191,8 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		try {
 			rs = statement.executeQuery(query);
 			
-			model = (DefaultTableModel) table.getModel();
+			model = MyTableModel.getModel();
+			//model = (DefaultTableModel) table.getModel();
 			
 			// Spaltenanzahl bekommen
 			ResultSetMetaData rsmetadata = rs.getMetaData();
@@ -183,6 +209,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 			
 			// Daten aus der Datenbank auslesen, solange es noch welche gibt...
 			while (rs.next()) {
+				
 			    String[] row = new String[colCount];
 			    for (int i = 0; i < colCount; i++) {
 			        row[i] = rs.getString(i + 1);
@@ -197,7 +224,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		}
 	}
 	
-	private void connectToDatabase() {
+	/*private void connectToDatabase() {
 		// JDBC URL
 	    String url = "jdbc:sqlite:prospectsData.db";
 	   
@@ -205,12 +232,11 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	    	Class.forName("org.sqlite.JDBC");
 	    	Connection conn = DriverManager.getConnection(url);
 	    	statement = conn.createStatement();
-	        
-
+	    	
 	    } catch (SQLException | ClassNotFoundException e) {
 	        e.printStackTrace();
 	    }
-	}
+	}*/
 	
 	 private int findColumnNumber(String columnName) {
         TableColumnModel columnModel = table.getColumnModel();
@@ -219,16 +245,24 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
             TableColumn column = columnModel.getColumn(i);
             String currentColumnName = (String) column.getHeaderValue();
             if (currentColumnName.equals(columnName)) {
-                return i; // Return the column number if the names match
+                return i; 
             }
         }
-        return -1; // Return -1 if the column is not found
+        return -1; // Return -1, wenn Spalte nicht gefunden
     }
 	
 	// ActionListener für Buttons
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		// TODO Auto-generated method stub
+		String command = e.getActionCommand();
+		switch (command) {
+		case "addNewUser":
+			new ProspectsPopUpFrame(colNames);
+			break;
+		case "exit":
+			System.exit(0);
+			break;
+		}
 		
 	}
 	
