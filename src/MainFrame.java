@@ -1,7 +1,4 @@
 import java.sql.*;
-
-
-import java.awt.EventQueue;
 import javax.swing.table.*;
 
 import javax.swing.JFrame;
@@ -17,6 +14,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -26,6 +24,8 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
+
 import java.awt.BorderLayout;
 import javax.swing.SwingConstants;
 import java.awt.Panel;
@@ -49,59 +49,51 @@ import java.awt.event.MouseEvent;
 public class MainFrame extends JFrame implements KeyListener, ActionListener {
 
 	private static final long serialVersionUID = 1L;
+	
+	private JFrame frame;
 	private JPanel contentPane;
-	private JPanel centerPanel;
+	//private JPanel centerPanel;
 	private JTable table;
-	private Statement statement;
 	private DefaultTableModel model;
 	private String[] colNames;
+	ArrayList<ArrayList<Object>> databaseData;
 	private Map<JTextField, String> textFieldMap;
 	private TableRowSorter<DefaultTableModel> myTableRowSorter;
-	
-	/**
-	 * Launch the application.
-	 */
-	public static void main(String[] args) {
-		EventQueue.invokeLater(new Runnable() {
-			public void run() {
-				try {
-					MainFrame frame = new MainFrame();
-					frame.pack();
-					frame.setVisible(true);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
-		
-	}
-
-	/**
-	 * Create the frame.
-	 */
-	
+	//private Connection base;
 	
 	
 	public MainFrame() {
 		// Mit Database verbinden
-		Database base = new Database();
-		base.connectToDatabase();
-		statement = base.getStatement();
+		Database.connectToDatabase();
 		
-		setIconImage(Toolkit.getDefaultToolkit().getImage("D:\\Beruf\\Ausbildung\\Eclipse Workspace\\JP Interessentenverwaltung\\MainIcon.png"));
-		setTitle("Interessentenverwaltung");
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 803, 507);
+		// HashMap mit TableHeaders aufbauen
+		TableHeaders.buildMap();
+		
+		frame = new JFrame();
+		
+		// Icon zum Frame hinzufügen und andere Grundeigenschaften setzen
+		ImageIcon icon = new ImageIcon("MainIcon.png");
+		frame.setIconImage(icon.getImage());
+		//frame.setIconImage(Toolkit.getDefaultToolkit().getImage("D:\\Beruf\\Ausbildung\\Eclipse Workspace\\JP Interessentenverwaltung\\MainIcon.png"));
+		frame.setTitle("Interessentenverwaltung");
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		
+		// Frame maximiert anzeigen (BOTH: Maximierte Höhe und Breite in Abhängigkeit von der Bildschirmgröße)
+		frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+		
+		//frame.setBounds(100, 100, 803, 507);
+		
 		contentPane = new JPanel();
-		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+		//contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+		contentPane.setLayout(new BorderLayout());
+		frame.setContentPane(contentPane);
 
-		setContentPane(contentPane);
-		contentPane.setLayout(new BorderLayout(0, 0));
-		
-		JMenuBar menuBar = new JMenuBar();
+		// Menü erstellen und zum North-Panel hinzufügen
+		//JMenuBar menuBar = new JMenuBar();
+		JMenuBar menuBar = setupMenuBar();
 		contentPane.add(menuBar, BorderLayout.NORTH);
 		
-		JMenu fileMenu = new JMenu("Datei");
+		/*JMenu fileMenu = new JMenu("Datei");
 		menuBar.add(fileMenu);
 		
 		JMenuItem closeItem = new JMenuItem("Schließen");
@@ -115,15 +107,22 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		fileMenu.add(addUser);
 		
 		JMenu helpMenu = new JMenu("Hilfe");
-		menuBar.add(helpMenu);
+		menuBar.add(helpMenu);*/
 		
-		centerPanel = new JPanel();
+		JPanel centerPanel = setupCenterPanel();
 		contentPane.add(centerPanel, BorderLayout.CENTER);
 		
-		createDataTable("SELECT * FROM prospects");
 		
 		// Create a panel for the east region with GridBagLayout
-        JPanel searchPanel = new JPanel(new GridBagLayout());
+		JScrollPane scrollSearchPane = setupSearchPanel();
+        contentPane.add(scrollSearchPane, BorderLayout.EAST);
+        
+        //frame.pack();
+		frame.setVisible(true);
+	}
+	
+	private JScrollPane setupSearchPanel() {
+		JPanel searchPanel = new JPanel(new GridBagLayout());
 
         // Create constraints for GridBagLayout
         GridBagConstraints constraints = new GridBagConstraints();
@@ -150,11 +149,39 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
         
         JScrollPane scrollSearchPane = new JScrollPane(searchPanel);
         scrollSearchPane.setPreferredSize(new Dimension(400, 0));
-        contentPane.add(scrollSearchPane, BorderLayout.EAST);
+        
+        return scrollSearchPane;
 	}
 	
-	private void createDataTable(String query) {	
-		getTableData(query);		
+	private JMenuBar setupMenuBar() {
+		JMenuBar menuBar = new JMenuBar();
+		
+		// Datei-Menü erstellen
+		JMenu fileMenu = new JMenu("Datei");
+		fileMenu.add(createMenuItem("Schließen", "exit"));
+		fileMenu.add(createMenuItem("Benutzer hinzufügen", "addNewUser"));
+		menuBar.add(fileMenu);
+		
+		// HilfeMenü erstellen
+		JMenu helpMenu = new JMenu("Hilfe");
+		menuBar.add(helpMenu);
+		
+		return menuBar;
+	}
+	
+	private JMenuItem createMenuItem(String label, String command) {
+		JMenuItem item = new JMenuItem(label);
+		item.setActionCommand(command);
+		item.addActionListener(this);
+		return item;
+	}
+	
+	private JPanel setupCenterPanel() {
+		// Im CenterPanel werden die Daten aus der Datenbank in einem JTable angezeigt
+		// Daten aus der Datenbank auslesen und in einem TableModel speichern
+		getTableData();
+		
+		
 		table = new JTable(model);
 		table.addMouseListener(new MouseAdapter() {
 			@Override
@@ -168,7 +195,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 				}
 				
 				// ProspectsPopUp öffnen und userdaten in die Felder einfügen
-				ProspectsPopUpFrame editUserFrame = new ProspectsPopUpFrame(colNames, rowData, selectedRow);
+				new ProspectsPopUpFrame(colNames, rowData, selectedRow);
 			}
 		});
 		
@@ -176,20 +203,26 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		// Scrollbar und Tablesorter zum JTable hinzufügen
 		JScrollPane scrollPane = new JScrollPane(table);
 		myTableRowSorter = new TableRowSorter<>(model);
+		myTableRowSorter.setComparator(0, Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
+		myTableRowSorter.setComparator(1, Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
+		myTableRowSorter.setComparator(13, Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
+		myTableRowSorter.setComparator(15, Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
 		table.setRowSorter(myTableRowSorter);
 		
-		centerPanel.setLayout(new BorderLayout(0, 0));
-		
+		JPanel centerPanel = new JPanel();
+		centerPanel.setLayout(new BorderLayout());
 		centerPanel.add(scrollPane);
 		
-		contentPane.add(centerPanel, BorderLayout.CENTER);
+		return centerPanel;
+		//contentPane.add(centerPanel, BorderLayout.CENTER);
 	}
 	
-	private void getTableData(String query) {
-		//query = "SELECT * FROM prospects WHERE Status is 'Interessiert'";
-		ResultSet rs;
+	private void getTableData() {
+		Statement statement = null;
+		ResultSet rs = null;
 		try {
-			rs = statement.executeQuery(query);
+			statement = Database.createStatement();
+			rs = statement.executeQuery("SELECT * FROM prospects");
 			
 			model = MyTableModel.getModel();
 			//model = (DefaultTableModel) table.getModel();
@@ -201,7 +234,13 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 			// Überschriften der Spalten aus den Metadaten auslesen
 			colNames = new String[colCount];
 			for (int i = 0; i < colCount; i++) {
-				colNames[i] = rsmetadata.getColumnLabel(i + 1);
+				String colNameDB = rsmetadata.getColumnLabel(i + 1);
+				System.out.println(colNameDB);
+				
+				// Überschrift für den JTable zum Array hinzufügen
+				// Frage: Warum dieser Aufwand. Theoretisch könnte man auch einfach die Überschriften in eine LinkedList packen und sie einfach blind in den JTable schreiben
+				// Vorteil hierbei: Wenn sich die Reihenfolge der Einträge in der Datenbank ändert, funktioniert diese Methode weiterhin, weil alles abgeglichen wird
+				colNames[i] = TableHeaders.getJTableColName(colNameDB);
 			}
 			
 			// Überschriften zum JTable hinzufügen
@@ -209,34 +248,25 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 			
 			// Daten aus der Datenbank auslesen, solange es noch welche gibt...
 			while (rs.next()) {
-				
 			    String[] row = new String[colCount];
 			    for (int i = 0; i < colCount; i++) {
-			        row[i] = rs.getString(i + 1);
+			    	String currentRsValue = rs.getString(i + 1);
+			    	row[i] = currentRsValue == null ? "" : currentRsValue; 
+			    	//row[i] = rs.getString(i + 1);
 			    }
 			    
 			    // Aktuelle Reihe zum JTable hinzufügen
 			    model.addRow(row);
 			}
+			
+			// ResultSet und Statement schließen
+			rs.close();
+			statement.close();
 		} 
 		catch (SQLException e) {
 			e.printStackTrace();
 		}
 	}
-	
-	/*private void connectToDatabase() {
-		// JDBC URL
-	    String url = "jdbc:sqlite:prospectsData.db";
-	   
-	    try {
-	    	Class.forName("org.sqlite.JDBC");
-	    	Connection conn = DriverManager.getConnection(url);
-	    	statement = conn.createStatement();
-	    	
-	    } catch (SQLException | ClassNotFoundException e) {
-	        e.printStackTrace();
-	    }
-	}*/
 	
 	 private int findColumnNumber(String columnName) {
         TableColumnModel columnModel = table.getColumnModel();

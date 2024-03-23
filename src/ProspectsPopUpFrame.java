@@ -1,26 +1,13 @@
-import java.awt.EventQueue;
 import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.FlowLayout;
-import java.awt.Graphics;
 import java.awt.GridLayout;
-import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.sql.RowSet;
 import javax.swing.*;
-import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 
 public class ProspectsPopUpFrame extends JFrame implements ActionListener {
@@ -29,7 +16,6 @@ private static final long serialVersionUID = 1L;
 private String[] colNames;
 private HashMap<String, JTextField> userData;
 private JFrame frame;
-private Statement statement;
 private JTextField[] dataFields;
 private HashMap<String, String> rowData;
 private boolean editUser;
@@ -38,60 +24,25 @@ private int selectedRow;
 		
 	public ProspectsPopUpFrame(String[] colNames) {
 		editUser = false;
-		Database base = new Database();
-		base.connectToDatabase();
-		statement = base.getStatement();
-		
 		this.colNames = colNames;
-		userData = new HashMap<>();
-		frame = new JFrame();
 		
-		frame.setTitle("Interessenteninformation");
-		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE); 
-		frame.setResizable(false);
-		frame.setLayout(new BorderLayout(10, 10));
-		
-		ImageIcon image = new ImageIcon("MainIcon.png");
-		frame.setIconImage(image.getImage());
-		
-		
-		JPanel userDataInputPanel = new JPanel(new GridLayout(0, 3, 15, 15));
-		userDataInputPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
-		
-		// Eingabefelder zur Usereingabe hinzufügen
-		addInputFields(userDataInputPanel);
-		
-		JPanel actionPanel = new JPanel();
-		JButton saveBtn = new JButton("Speichern");
-		JButton abortBtn = new JButton("Abbrechen");
-		saveBtn.setActionCommand("save");
-		abortBtn.setActionCommand("abort");
-		saveBtn.addActionListener(this);
-		abortBtn.addActionListener(this);
-		actionPanel.add(saveBtn);
-		actionPanel.add(abortBtn);
-		actionPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
-		
-		
-		
-		
-		frame.add(actionPanel, BorderLayout.SOUTH);
-		frame.add(userDataInputPanel, BorderLayout.CENTER);
-		frame.pack();
-		frame.setVisible(true);
-			
+		setUpFrame();
 	}
 	
 	public ProspectsPopUpFrame(String[] colNames, HashMap<String, String> rowData, int selectedRow) {
-		editUser = true;		
+		editUser = true;
 		this.rowData = rowData;
 		this.selectedRow = selectedRow;
-		
-		Database base = new Database();
-		base.connectToDatabase();
-		statement = base.getStatement();
-		
 		this.colNames = colNames;
+		
+		setUpFrame();
+	}
+	
+	private void setUpFrame() {
+		// An dieser Stelle besteht normalerweise schon eine Connection zur DB --> man hätte theoretisch eine getterMethode verwenden können
+		// Vorteil hierbei: Sollte die Connection aus irgendeinem Grund abgebrochen sein, wird sie neu erstellt, sollte sie bestehen, ändert sich nichts
+		Database.connectToDatabase();
+		
 		userData = new HashMap<>();
 		frame = new JFrame();
 		
@@ -107,34 +58,42 @@ private int selectedRow;
 		JPanel userDataInputPanel = new JPanel(new GridLayout(0, 3, 15, 15));
 		userDataInputPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 		
-		// Eingabefelder zur Usereingabe hinzufügen
-		//////////////////////////////////////////////////////////////////////////////////
-		addInputFieldsEdit(userDataInputPanel);
+		
+		if (editUser) {
+			addInputFieldsEdit(userDataInputPanel);
+		}
+		else {
+			addInputFields(userDataInputPanel);
+		}
 		
 		JPanel actionPanel = new JPanel();
-		JButton saveBtn = new JButton("Speichern");
-		JButton abortBtn = new JButton("Abbrechen");
-		JButton deleteBtn = new JButton("Löschen");
 		
-		saveBtn.setActionCommand("save");
-		abortBtn.setActionCommand("abort");
-		deleteBtn.setActionCommand("delete");
-		
-		saveBtn.addActionListener(this);
-		abortBtn.addActionListener(this);
-		deleteBtn.addActionListener(this);
-		
+		JButton saveBtn = createBtn("Speichern", "save");
 		actionPanel.add(saveBtn);
-		actionPanel.add(deleteBtn);
-		actionPanel.add(abortBtn);
-		actionPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
 		
+		if (editUser) {
+			JButton deleteBtn = createBtn("Löschen", "delete");
+			actionPanel.add(deleteBtn);
+		}
+		
+		JButton abortBtn = createBtn("Abbrechen", "abort");
+		actionPanel.add(abortBtn);
+		
+		actionPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
+				
 		frame.add(actionPanel, BorderLayout.SOUTH);
 		frame.add(userDataInputPanel, BorderLayout.CENTER);
 		frame.pack();
 		frame.setVisible(true);
-		
 	}
+	
+	private JButton createBtn(String btnName, String actionCommand) {
+		JButton button = new JButton(btnName);
+		button.setActionCommand(actionCommand);
+		button.addActionListener(this);
+		return button;
+	}
+	
 	
 	private void addInputFields(JPanel panel) {
 		dataFields = new JTextField[colNames.length - 1];
@@ -165,94 +124,135 @@ private int selectedRow;
 	public void actionPerformed(ActionEvent e) {
 		String command = e.getActionCommand();
 		
-		if (command.equals("abort")) {
-			frame.dispose();
+		switch (command) {
+		case "delete":
+			deleteUser();
+			break;
+		case "save":
+			if (editUser) {
+				// Existierenden Interessenten updaten
+				updateExistingProspect();
+			}
+			else {
+				// Neuen Interessenten hinzufügen
+				addNewProspect();
+			}
+			break;
+		}
+		
+		// Frame schließen
+		frame.dispose();
+			
+		/*if (command.equals("abort")) {
+			// Nichts tun --> kann am Ende evtl. gel
 		}
 		else if (command.equals("delete")) {
-			try {
-				MyTableModel model = MyTableModel.getModel();
-				
-				// Eintrag aus der Datenbank löschen
-				System.out.println(rowData.get("id"));
-				statement.executeUpdate(String.format("DELETE FROM prospects WHERE id = %s", rowData.get("id")));
-				
-				// Reihe aus dem JTable löschen
-				model.removeRow(selectedRow);
-				model.fireTableDataChanged();
-				
-				// Statement schließen
-				statement.close();
-				
-			} catch (SQLException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
+			deleteUser();
 			frame.dispose();
 		}
 		else if (command.equals("save")) {
-			// Wenn neuer User hinzugefügt wird
+			// Wenn neuer Interessent hinzugefügt wird
 			if (editUser == false) {
-				String insertQuery = generateInsertQuery();
-				try {
-					statement.executeUpdate(insertQuery);
-					MyTableModel model = MyTableModel.getModel();
-					
-					// Die soeben hinzugefügte Zeile in der Datenbank auswählen
-					String getInsertQuery = "SELECT * FROM prospects ORDER BY id DESC LIMIT 1";
-					ResultSet rs = statement.executeQuery(getInsertQuery);
-					
-					// Spaltenanzahl bekommen
-					ResultSetMetaData rsmetadata = rs.getMetaData();
-					int colCount = rsmetadata.getColumnCount();
-					String[] row = new String[colCount];
-					
-					// Daten aus der letzten Tabellenzeile zum Tabellenmodell hinzufügen
-					for (int i = 0; i < colCount; i++) {
-						row[i] = rs.getString(i + 1);
-					}	
-					model.addRow(row);
-					model.fireTableDataChanged();
-					
-					// ResultSet und Statement schließen
-					rs.close();
-					statement.close();
-					
-				} catch (SQLException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
+				addNewProspect();
 			}
 			
 			// Wenn existierender User upgedated wird.
 			else {
-				String insertQuery = generateUpdateQuery();
-				try {
-					statement.executeUpdate(insertQuery);
-					MyTableModel model = MyTableModel.getModel();
-					
-					// Geänderte Zeile in der Datenbank auswählen
-					String getInsertQuery = String.format("SELECT * FROM prospects WHERE id = %s", rowData.get("id"));
-					ResultSet rs = statement.executeQuery(getInsertQuery);
-					
-					// Spaltenanzahl bekommen
-					ResultSetMetaData rsmetadata = rs.getMetaData();
-					int colCount = rsmetadata.getColumnCount();
-					
-					// Zeile im JTable mit den neu eingegebenen Daten updaten
-					for (int i = 0; i < colCount; i++) {
-						model.setValueAt(rs.getString(i + 1), selectedRow, i);
-					}
-
-					// ResultSet und Statement schließen
-					rs.close();
-					statement.close();
-					
-				} catch (SQLException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
+				updateExistingProspect();
 			}
-			frame.dispose();
+		}
+		
+		// Nach Klicken des Buttons: Frame schließen
+		frame.dispose();*/
+	}
+	
+	private void updateExistingProspect() {
+		String insertQuery = generateUpdateQuery();
+		Statement statement = null;
+		ResultSet rs = null;
+		try {
+			statement = Database.createStatement();
+			statement.executeUpdate(insertQuery);
+			MyTableModel model = MyTableModel.getModel();
+			
+			// Geänderte Zeile in der Datenbank auswählen
+			String getInsertQuery = String.format("SELECT * FROM prospects WHERE id = %s", rowData.get("id"));
+			rs = statement.executeQuery(getInsertQuery);
+			
+			// Spaltenanzahl bekommen
+			ResultSetMetaData rsmetadata = rs.getMetaData();
+			int colCount = rsmetadata.getColumnCount();
+			
+			// Zeile im JTable mit den neu eingegebenen Daten updaten
+			for (int i = 0; i < colCount; i++) {
+				model.setValueAt(rs.getString(i + 1), selectedRow, i);
+			}
+			
+		} catch (SQLException e1) {
+			e1.printStackTrace();
+		}
+		finally {
+			Database.closeResultSet(rs);
+			Database.closeStatement();
+		}
+	}
+	
+	private void addNewProspect() {
+		String insertQuery = generateInsertQuery();
+		Statement statement = null;
+		ResultSet rs = null;
+		try {
+			statement = Database.createStatement();
+			statement.executeUpdate(insertQuery);
+			
+			MyTableModel model = MyTableModel.getModel();
+			
+			// Die soeben hinzugefügte Zeile in der Datenbank auswählen
+			String getInsertQuery = "SELECT * FROM prospects ORDER BY id DESC LIMIT 1";
+			rs = statement.executeQuery(getInsertQuery);
+			
+			// Spaltenanzahl bekommen
+			ResultSetMetaData rsmetadata = rs.getMetaData();
+			int colCount = rsmetadata.getColumnCount();
+			String[] row = new String[colCount];
+			
+			// Daten aus der letzten Tabellenzeile zum Tabellenmodell hinzufügen
+			for (int i = 0; i < colCount; i++) {
+				row[i] = rs.getString(i + 1);
+			}	
+			model.addRow(row);
+			model.fireTableDataChanged();
+			
+		} catch (SQLException e1) {
+			e1.printStackTrace();
+		}
+		finally {
+			Database.closeResultSet(rs);
+			Database.closeStatement();
+		}
+	}
+	
+	private void deleteUser() {
+		Statement statement = null;
+		try {
+			MyTableModel model = MyTableModel.getModel();
+			
+			// Eintrag aus der Datenbank löschen
+			statement = Database.createStatement();
+			statement.executeUpdate(String.format("DELETE FROM prospects WHERE id = %s", rowData.get("id")));
+			
+			// Reihe aus dem JTable löschen
+			model.removeRow(selectedRow);
+			model.fireTableDataChanged();
+			
+			// Statement schließen
+			statement.close();
+			
+		} catch (SQLException e1) {
+			e1.printStackTrace();
+		}
+		finally {
+			Database.closeStatement();
 		}
 	}
 	
