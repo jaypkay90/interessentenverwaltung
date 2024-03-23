@@ -69,9 +69,9 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		// HashMap mit TableHeaders aufbauen
 		TableHeaders.buildMap();
 		
-		frame = new JFrame();
 		
-		// Icon zum Frame hinzufügen und andere Grundeigenschaften setzen
+		// Frame erstellen, Icon hinzufügen und andere Grundeigenschaften setzen
+		frame = new JFrame();
 		ImageIcon icon = new ImageIcon("MainIcon.png");
 		frame.setIconImage(icon.getImage());
 		//frame.setIconImage(Toolkit.getDefaultToolkit().getImage("D:\\Beruf\\Ausbildung\\Eclipse Workspace\\JP Interessentenverwaltung\\MainIcon.png"));
@@ -81,14 +81,14 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		// Frame maximiert anzeigen (BOTH: Maximierte Höhe und Breite in Abhängigkeit von der Bildschirmgröße)
 		frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
 		
-		//frame.setBounds(100, 100, 803, 507);
+		frame.setBounds(100, 100, 803, 507);
 		
 		contentPane = new JPanel();
 		//contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		contentPane.setLayout(new BorderLayout());
 		frame.setContentPane(contentPane);
 
-		// Menü erstellen und zum North-Panel hinzufügen
+		// Menü erstellen und zum North-Region hinzufügen
 		//JMenuBar menuBar = new JMenuBar();
 		JMenuBar menuBar = setupMenuBar();
 		contentPane.add(menuBar, BorderLayout.NORTH);
@@ -109,11 +109,12 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		JMenu helpMenu = new JMenu("Hilfe");
 		menuBar.add(helpMenu);*/
 		
-		JPanel centerPanel = setupCenterPanel();
-		contentPane.add(centerPanel, BorderLayout.CENTER);
+		// Panel zum Anzeigen der Daten aus der DB zur Center-Region hinzufügen
+		JScrollPane scrollTablePane = setupCenterPanel();
+		//JPanel centerPanel = setupCenterPanel();
+		contentPane.add(scrollTablePane, BorderLayout.CENTER);
 		
-		
-		// Create a panel for the east region with GridBagLayout
+		// Panel für Suche und Filterung der Daten zur East-Region hinzufügen
 		JScrollPane scrollSearchPane = setupSearchPanel();
         contentPane.add(scrollSearchPane, BorderLayout.EAST);
         
@@ -176,7 +177,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		return item;
 	}
 	
-	private JPanel setupCenterPanel() {
+	private JScrollPane setupCenterPanel() {
 		// Im CenterPanel werden die Daten aus der Datenbank in einem JTable angezeigt
 		// Daten aus der Datenbank auslesen und in einem TableModel speichern
 		getTableData();
@@ -213,7 +214,9 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		centerPanel.setLayout(new BorderLayout());
 		centerPanel.add(scrollPane);
 		
-		return centerPanel;
+		JScrollPane scrollTablePane = new JScrollPane(centerPanel);
+		 scrollTablePane.setPreferredSize(new Dimension(400, 0));
+		return scrollTablePane;
 		//contentPane.add(centerPanel, BorderLayout.CENTER);
 	}
 	
