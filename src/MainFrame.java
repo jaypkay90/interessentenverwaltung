@@ -16,6 +16,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -55,8 +56,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	//private JPanel centerPanel;
 	private JTable table;
 	private DefaultTableModel model;
-	private String[] colNames;
-	ArrayList<ArrayList<Object>> databaseData;
+	private String[] colNames = TableHeaders.getJTableHeaders();
 	private Map<JTextField, String> textFieldMap;
 	private TableRowSorter<DefaultTableModel> myTableRowSorter;
 	//private Connection base;
@@ -67,7 +67,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		Database.connectToDatabase();
 		
 		// HashMap mit TableHeaders aufbauen
-		TableHeaders.buildMap();
+		//TableHeaders.buildMap();
 		
 		
 		// Frame erstellen, Icon hinzufügen und andere Grundeigenschaften setzen
@@ -81,7 +81,11 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		// Frame maximiert anzeigen (BOTH: Maximierte Höhe und Breite in Abhängigkeit von der Bildschirmgröße)
 		frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
 		
-		frame.setBounds(100, 100, 803, 507);
+        /*Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        frame.setSize(screenSize.width, screenSize.height);*/
+		
+		// Initiale Größe des Frames beim Minimieren
+		frame.setBounds(100, 100, 800, 500);
 		
 		contentPane = new JPanel();
 		//contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
@@ -123,29 +127,25 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	}
 	
 	private JScrollPane setupSearchPanel() {
-		JPanel searchPanel = new JPanel(new GridBagLayout());
-
-        // Create constraints for GridBagLayout
-        GridBagConstraints constraints = new GridBagConstraints();
-        constraints.gridx = 0;
-        constraints.gridy = GridBagConstraints.RELATIVE;
-        constraints.anchor = GridBagConstraints.WEST;
-        constraints.fill = GridBagConstraints.HORIZONTAL;
-        constraints.weightx = 1.0;
-        constraints.insets = new Insets(5, 5, 5, 5);
-
-        // Create multiple rows with JLabel and JTextField
+        JPanel searchPanel = new JPanel(new GridLayout(0, 1, 10, 10));
+        searchPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        searchPanel.add(new JLabel("Suche", SwingConstants.CENTER));
+        
+        // Die Textfelder und der Name des Feldes werden über eine HashMap "verbunden". So kann festgestellt werden, in welchen Tabellenspalten gefiltert werden soll.
         textFieldMap = new HashMap<>();
         
         for (String colName : colNames) {
+        	JPanel itemPanel = new JPanel(new GridLayout(0, 1, 5,5));
             JLabel label = new JLabel(colName);
             JTextField textField = new JTextField(15); // Breite: 15px
             textField.addKeyListener(this);
+            
+            itemPanel.add(label);
+            itemPanel.add(textField);
+            
             textFieldMap.put(textField, colName);
 
-            // Add components to the panel using constraints
-            searchPanel.add(label, constraints);
-            searchPanel.add(textField, constraints);
+            searchPanel.add(itemPanel);
         }
         
         JScrollPane scrollSearchPane = new JScrollPane(searchPanel);
@@ -182,12 +182,14 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		// Daten aus der Datenbank auslesen und in einem TableModel speichern
 		getTableData();
 		
-		
 		table = new JTable(model);
 		table.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				int selectedRow = table.getSelectedRow();
+				int rowInView = table.getSelectedRow();
+				
+				
+				int selectedRow = table.convertRowIndexToModel(rowInView);
 				
 				// Daten aus der selektierten Reihe auslesen
 				HashMap<String, String> rowData = new HashMap<>();
@@ -196,7 +198,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 				}
 				
 				// ProspectsPopUp öffnen und userdaten in die Felder einfügen
-				new ProspectsPopUpFrame(colNames, rowData, selectedRow);
+				new ProspectsPopUpFrame(rowData, selectedRow);
 			}
 		});
 		
@@ -221,21 +223,33 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	}
 	
 	private void getTableData() {
+		// TableModel aus der MyTableModel Klasse bekommen
+		model = MyTableModel.getModel();
+		
+		// Überschriften zum TableModel hinzufügen
+		model.setColumnIdentifiers(TableHeaders.getJTableHeaders());
+					
+		// Daten aus der DB auslesen und zum TableModel hinzufügen		
 		Statement statement = null;
 		ResultSet rs = null;
+		
 		try {
-			statement = Database.createStatement();
-			rs = statement.executeQuery("SELECT * FROM prospects");
 			
-			model = MyTableModel.getModel();
-			//model = (DefaultTableModel) table.getModel();
 			
-			// Spaltenanzahl bekommen
-			ResultSetMetaData rsmetadata = rs.getMetaData();
-			int colCount = rsmetadata.getColumnCount();
+			// TableModel aus der MyTableModel Klasse bekommen
+			//model = MyTableModel.getModel();
+			
+			// Überschriften zum JTable hinzufügen
+			//model.setColumnIdentifiers(TableHeaders.getJTableHeaders());
+			
+			
+			// Spaltenanzahl bekommen --> entspricht der Anzahl von Einträgen in der TableHeaders HashMap
+			/*ResultSetMetaData rsmetadata = rs.getMetaData();
+			int colCount = rsmetadata.getColumnCount();*/
+			//int colCount = TableHeaders.getColCount();
 			
 			// Überschriften der Spalten aus den Metadaten auslesen
-			colNames = new String[colCount];
+			/*colNames = new String[colCount];
 			for (int i = 0; i < colCount; i++) {
 				String colNameDB = rsmetadata.getColumnLabel(i + 1);
 				System.out.println(colNameDB);
@@ -244,10 +258,15 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 				// Frage: Warum dieser Aufwand. Theoretisch könnte man auch einfach die Überschriften in eine LinkedList packen und sie einfach blind in den JTable schreiben
 				// Vorteil hierbei: Wenn sich die Reihenfolge der Einträge in der Datenbank ändert, funktioniert diese Methode weiterhin, weil alles abgeglichen wird
 				colNames[i] = TableHeaders.getJTableColName(colNameDB);
-			}
+				
+				
+			}*/
 			
-			// Überschriften zum JTable hinzufügen
-			model.setColumnIdentifiers(colNames);
+			statement = Database.createStatement();
+			rs = statement.executeQuery("SELECT * FROM prospects");
+			
+			// Spaltenanzahl entpricht der Anzahl von Spaltenüberschriften
+			int colCount = TableHeaders.getColCount();
 			
 			// Daten aus der Datenbank auslesen, solange es noch welche gibt...
 			while (rs.next()) {
@@ -255,23 +274,21 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 			    for (int i = 0; i < colCount; i++) {
 			    	String currentRsValue = rs.getString(i + 1);
 			    	row[i] = currentRsValue == null ? "" : currentRsValue; 
-			    	//row[i] = rs.getString(i + 1);
 			    }
 			    
 			    // Aktuelle Reihe zum JTable hinzufügen
 			    model.addRow(row);
 			}
-			
-			// ResultSet und Statement schließen
-			rs.close();
-			statement.close();
 		} 
 		catch (SQLException e) {
 			e.printStackTrace();
 		}
+		finally {
+			Database.closeResultSetAndStatement(rs);
+		}
 	}
 	
-	 private int findColumnNumber(String columnName) {
+	/*private int findColumnNumber(String columnName) {
         TableColumnModel columnModel = table.getColumnModel();
         int columnCount = columnModel.getColumnCount();
         for (int i = 0; i < columnCount; i++) {
@@ -282,15 +299,16 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
             }
         }
         return -1; // Return -1, wenn Spalte nicht gefunden
-    }
+    }*/
 	
 	// ActionListener für Buttons
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		String command = e.getActionCommand();
+		
 		switch (command) {
 		case "addNewUser":
-			new ProspectsPopUpFrame(colNames);
+			new ProspectsPopUpFrame();
 			break;
 		case "exit":
 			System.exit(0);
@@ -314,42 +332,38 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 
 	@Override
 	public void keyReleased(KeyEvent e) {
-		// Text Field in der HashMap suchen
-		JTextField selectedField = (JTextField) e.getSource();
+		// User hat Suchtext eingegeben --> Tabelle filtern... --Field in der HashMap suchen
+		/*JTextField selectedField = (JTextField) e.getSource();
 		String colName = textFieldMap.get(selectedField);
-		int colNum = findColumnNumber(colName);
+		int colNum = findColumnNumber(colName);*/
 		filterTable();
 	}
 	
-	public void filterTable() {				
-		RowFilter<TableModel, Object>[] colFilters = new RowFilter[textFieldMap.size()];
-		int i = 0;
+	public void filterTable() {
+		// In dieser ArrayList werden alle gefilterten Reihen angezeigt --> Grö
+		ArrayList<RowFilter<TableModel, Object>> colFilters = new ArrayList<>();
 		
 		// Durch Hashmap mit JTextfields loopen
-		for (Map.Entry<JTextField, String> entry : textFieldMap.entrySet()) {			
+		for (Map.Entry<JTextField, String> entry : textFieldMap.entrySet()) {
+			
 			// Textfield und column Name des akt. Entrys bekmmen
 			JTextField currentField = entry.getKey();
 			String colName = entry.getValue();
 			String searchText = currentField.getText();
-			int colNum = findColumnNumber(colName);
+			int colNum = TableHeaders.getJTableColNumByJTableColName(colName);
 			
-			// Filter für akt. Col. zum Filter-Array hinzufügen, wenn Suchtext nicht leer ist
+			// Filter für akt. Col. in der Tabelle zum Filter-Array hinzufügen, wenn Suchtext nicht leer ist
 			if (searchText != "") {
-				colFilters[i] = RowFilter.regexFilter(currentField.getText(), colNum);
-				i++;
+				colFilters.add(RowFilter.regexFilter(currentField.getText(), colNum));
 			}
 		}
 		
-		// Array kopieren und alle leeren Plätze rauswerfen
-		RowFilter<TableModel, Object>[] validFilters = Arrays.copyOf(colFilters, i);
-		
 		// Filter von allen Cols kombinieren
-		RowFilter<TableModel, Object> compoundFilter = RowFilter.andFilter(Arrays.asList(validFilters));
+		RowFilter<TableModel, Object> compoundFilter = RowFilter.andFilter(colFilters);
 		
 		// Kombinierten Filter zum RowSorter hinzufügen
-		myTableRowSorter.setRowFilter(compoundFilter);
-			
-		}
+		myTableRowSorter.setRowFilter(compoundFilter);		
+	}
 		
 	
 }

@@ -6,17 +6,19 @@ public class MyTableModel extends DefaultTableModel {
 	private static final long serialVersionUID = 1L;
 	private static MyTableModel model;
 
-    // Static initialization block to create the shared instance
+    // Statische Initialisierung, sobald das Programm startet
     static {
         model = new MyTableModel();
+        //model = new DefaultTableModel();
     }
 
-    // Private constructor to prevent external instantiation
+    // Privater Konstruktor, der nur innerhalb dieser Klasse aufgerufen werden kann
     private MyTableModel() {
-        super();
+        //super();
+    	new DefaultTableModel();
     }
 
-    // Static method to access the shared instance
+    // Das Tabellenmodell kann von jeder anderen Klasse abgerufen werden
     public static MyTableModel getModel() {
         return model;
     }

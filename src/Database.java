@@ -73,5 +73,11 @@ public class Database {
 			e.printStackTrace();
 		}
 	}
+	
+	
+	public static void closeResultSetAndStatement(ResultSet rs) {
+		closeResultSet(rs);
+		closeStatement();
+	}
 
 }

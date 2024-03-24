@@ -13,7 +13,7 @@ import javax.swing.border.EmptyBorder;
 public class ProspectsPopUpFrame extends JFrame implements ActionListener {
 
 private static final long serialVersionUID = 1L;
-private String[] colNames;
+private String[] colNames = TableHeaders.getJTableHeaders();
 private HashMap<String, JTextField> userData;
 private JFrame frame;
 private JTextField[] dataFields;
@@ -22,18 +22,18 @@ private boolean editUser;
 private int selectedRow;
 
 		
-	public ProspectsPopUpFrame(String[] colNames) {
+	public ProspectsPopUpFrame() {
 		editUser = false;
-		this.colNames = colNames;
+		//this.colNames = colNames;
 		
 		setUpFrame();
 	}
 	
-	public ProspectsPopUpFrame(String[] colNames, HashMap<String, String> rowData, int selectedRow) {
+	public ProspectsPopUpFrame(HashMap<String, String> rowData, int selectedRow) {
 		editUser = true;
 		this.rowData = rowData;
 		this.selectedRow = selectedRow;
-		this.colNames = colNames;
+		//this.colNames = colNames;
 		
 		setUpFrame();
 	}
@@ -176,12 +176,13 @@ private int selectedRow;
 			MyTableModel model = MyTableModel.getModel();
 			
 			// Geänderte Zeile in der Datenbank auswählen
-			String getInsertQuery = String.format("SELECT * FROM prospects WHERE id = %s", rowData.get("id"));
+			String getInsertQuery = String.format("SELECT * FROM prospects WHERE id = %s", rowData.get("ID"));
 			rs = statement.executeQuery(getInsertQuery);
 			
-			// Spaltenanzahl bekommen
-			ResultSetMetaData rsmetadata = rs.getMetaData();
-			int colCount = rsmetadata.getColumnCount();
+			// Spaltenanzahl bekommen --> entspricht der Anzahl von Überschriften
+			/*ResultSetMetaData rsmetadata = rs.getMetaData();
+			int colCount = rsmetadata.getColumnCount();*/
+			int colCount = TableHeaders.getColCount();
 			
 			// Zeile im JTable mit den neu eingegebenen Daten updaten
 			for (int i = 0; i < colCount; i++) {
