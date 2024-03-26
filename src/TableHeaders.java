@@ -56,6 +56,14 @@ public class TableHeaders {
 	/*public static  LinkedHashMap<Integer, String[]> getHeaders() {
 		return headers;
 	}*/
+	
+	public static String getDBColNameByColIndex(int colIndex) {
+		return dbHeaders[colIndex];
+	}
+	
+	public static String getJTableColNameByColIndex(int colIndex) {
+		return jTableHeaders[colIndex];
+	}
 
 	public static int getColCount() {
 		return colCount;
@@ -94,7 +102,7 @@ public class TableHeaders {
 		int i = 0;
 		for (Map.Entry<Integer, String[]> entry : headers.entrySet()) {
 			jTableHeaders[i] = entry.getValue()[0];
-			dbHeaders[i] = entry.getValue()[0];
+			dbHeaders[i] = entry.getValue()[1];
 			i++;
 		}
 	}

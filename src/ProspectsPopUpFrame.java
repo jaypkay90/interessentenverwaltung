@@ -2,11 +2,16 @@ import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
@@ -100,7 +105,7 @@ private int selectedRow;
 		for (int i = 0; i < colNames.length; i++) {
 			JPanel itemPanel = new JPanel(new GridLayout(0, 1, 8, 8));
 			
-			if (colNames[i] != "id") {
+			if (colNames[i] != "ID") {
 				userData.put(colNames[i], new JTextField(15));
 				itemPanel.add(new JLabel(colNames[i]));
 				itemPanel.add(userData.get(colNames[i]));
@@ -129,44 +134,28 @@ private int selectedRow;
 			deleteUser();
 			break;
 		case "save":
+			String query;
 			if (editUser) {
 				// Existierenden Interessenten updaten
-				updateExistingProspect();
+				query = generateUpdateQuery();
+				updateDatabaseTable(query);
+				updateExistingProspectInJTable();
 			}
 			else {
 				// Neuen Interessenten hinzufügen
-				addNewProspect();
+				String colNamesStr = buildColStringForQuery();
+				query = String.format("INSERT INTO prospects (%s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", colNamesStr);
+				updateDatabaseTable(query);
+				addNewProspectToJTable();
 			}
 			break;
 		}
 		
 		// Frame schließen
 		frame.dispose();
-			
-		/*if (command.equals("abort")) {
-			// Nichts tun --> kann am Ende evtl. gel
-		}
-		else if (command.equals("delete")) {
-			deleteUser();
-			frame.dispose();
-		}
-		else if (command.equals("save")) {
-			// Wenn neuer Interessent hinzugefügt wird
-			if (editUser == false) {
-				addNewProspect();
-			}
-			
-			// Wenn existierender User upgedated wird.
-			else {
-				updateExistingProspect();
-			}
-		}
-		
-		// Nach Klicken des Buttons: Frame schließen
-		frame.dispose();*/
 	}
 	
-	private void updateExistingProspect() {
+	private void updateExistingProspectInJTable() {
 		String insertQuery = generateUpdateQuery();
 		Statement statement = null;
 		ResultSet rs = null;
@@ -176,7 +165,7 @@ private int selectedRow;
 			MyTableModel model = MyTableModel.getModel();
 			
 			// Geänderte Zeile in der Datenbank auswählen
-			String getInsertQuery = String.format("SELECT * FROM prospects WHERE id = %s", rowData.get("ID"));
+			String getInsertQuery = String.format("SELECT * FROM prospects WHERE ID = %s", userData.get("ID"));
 			rs = statement.executeQuery(getInsertQuery);
 			
 			// Spaltenanzahl bekommen --> entspricht der Anzahl von Überschriften
@@ -193,23 +182,19 @@ private int selectedRow;
 			e1.printStackTrace();
 		}
 		finally {
-			Database.closeResultSet(rs);
-			Database.closeStatement();
+			Database.closeResultSetAndStatement(rs);
 		}
 	}
 	
-	private void addNewProspect() {
-		String insertQuery = generateInsertQuery();
+	private void addNewProspectToJTable() {
 		Statement statement = null;
 		ResultSet rs = null;
 		try {
-			statement = Database.createStatement();
-			statement.executeUpdate(insertQuery);
-			
 			MyTableModel model = MyTableModel.getModel();
 			
 			// Die soeben hinzugefügte Zeile in der Datenbank auswählen
-			String getInsertQuery = "SELECT * FROM prospects ORDER BY id DESC LIMIT 1";
+			statement = Database.createStatement();
+			String getInsertQuery = "SELECT * FROM prospects ORDER BY ID DESC LIMIT 1";
 			rs = statement.executeQuery(getInsertQuery);
 			
 			// Spaltenanzahl bekommen
@@ -228,8 +213,7 @@ private int selectedRow;
 			e1.printStackTrace();
 		}
 		finally {
-			Database.closeResultSet(rs);
-			Database.closeStatement();
+			Database.closeResultSetAndStatement(rs);
 		}
 	}
 	
@@ -240,7 +224,7 @@ private int selectedRow;
 			
 			// Eintrag aus der Datenbank löschen
 			statement = Database.createStatement();
-			statement.executeUpdate(String.format("DELETE FROM prospects WHERE id = %s", rowData.get("id")));
+			statement.executeUpdate(String.format("DELETE FROM prospects WHERE ID = %s", rowData.get("ID")));
 			
 			// Reihe aus dem JTable löschen
 			model.removeRow(selectedRow);
@@ -257,32 +241,113 @@ private int selectedRow;
 		}
 	}
 	
-	private String generateInsertQuery() {
-		String query = "INSERT INTO prospects (Status, Interesse_an, Vorname, Nachname, Telefon, E_Mail, Sprache, Kanal, Firma, Abteilung, Branche, Land, Strasse, Hausnummer, PLZ, Stadt, Werbemassnahmen) " +
-                "VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');";
+	private String buildColStringForQuery() {
+		// Diese Methode baut einen String mit allen Spaltennamen in der Datenbank, um diesen String für Queries verwenden zu können
+		StringBuilder builder = new StringBuilder();
+		String dbHeaders[] = TableHeaders.getDBHeaders();
 		
-		return String.format(query,
-				userData.get("Status").getText(),
-                userData.get("Interesse_an").getText(),
-                userData.get("Vorname").getText(),
-                userData.get("Nachname").getText(),
-                userData.get("Telefon").getText(),
-                userData.get("E_Mail").getText(),
-                userData.get("Sprache").getText(),
-                userData.get("Kanal").getText(),
-                userData.get("Firma").getText(),
-                userData.get("Abteilung").getText(),
-                userData.get("Branche").getText(),
-                userData.get("Land").getText(),
-                userData.get("Strasse").getText(),
-                userData.get("Hausnummer").getText(),
-                userData.get("PLZ").getText(),
-                userData.get("Stadt").getText(),
-                userData.get("Werbemassnahmen").getText());
+		for (String header : dbHeaders) {
+			if (header != "ID") {
+				builder.append(header + ", ");				
+			}
+		}
+		
+		String colNamesStr = builder.toString();
+		colNamesStr = colNamesStr.substring(0, builder.length() - 2);
+		System.out.println(colNamesStr);
+		
+		return colNamesStr.toString();
+	}
+	
+	private void updateDatabaseTable(String query) {
+		try {
+			Connection connect = Database.getConnection();
+			PreparedStatement prep = connect.prepareStatement(query);
+			
+			//prep.setInt(1, Integer.parseInt(userData.get(TableHeaders.getJTableColNameByColIndex(1)).getText()));
+			prep.setInt(1, 0);
+			prep.setString(2, userData.get(TableHeaders.getJTableColNameByColIndex(2)).getText());
+			prep.setString(3, userData.get(TableHeaders.getJTableColNameByColIndex(3)).getText());
+			prep.setString(4, userData.get(TableHeaders.getJTableColNameByColIndex(4)).getText());
+			prep.setString(5, userData.get(TableHeaders.getJTableColNameByColIndex(5)).getText());
+			prep.setString(6, userData.get(TableHeaders.getJTableColNameByColIndex(6)).getText());
+			prep.setString(7, userData.get(TableHeaders.getJTableColNameByColIndex(7)).getText());
+			prep.setString(8, userData.get(TableHeaders.getJTableColNameByColIndex(8)).getText());
+			prep.setString(9, userData.get(TableHeaders.getJTableColNameByColIndex(9)).getText());
+			prep.setString(10, userData.get(TableHeaders.getJTableColNameByColIndex(10)).getText());
+			prep.setString(11, userData.get(TableHeaders.getJTableColNameByColIndex(11)).getText());
+			prep.setString(12, userData.get(TableHeaders.getJTableColNameByColIndex(12)).getText());
+			prep.setString(13, userData.get(TableHeaders.getJTableColNameByColIndex(13)).getText());
+			prep.setString(14, userData.get(TableHeaders.getJTableColNameByColIndex(14)).getText());
+			prep.setString(15, userData.get(TableHeaders.getJTableColNameByColIndex(15)).getText());
+			prep.setString(16, userData.get(TableHeaders.getJTableColNameByColIndex(16)).getText());
+			//prep.setDate(18, userData.get(TableHeaders.getDBColNameByColIndex(16)).getText());
+			
+			// DATE-PROBLEM		
+			prep.setDate(17, null);
+			prep.executeUpdate();
+		}
+		catch (SQLException e) {
+			e.printStackTrace();
+		}
+			
+	}
+	
+	private void executeQuery(String query) {
+		//String query = String.format("INSERT INTO prospects (%s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", colNamesStr);
+		
+		/*for (Map.Entry<String, JTextField> entry : userData.entrySet()) {
+			String key = entry.getKey();
+			String text = entry.getValue().getText();
+		}*/
+		
+		try {
+			Connection connect = Database.getConnection();
+			PreparedStatement prep = connect.prepareStatement(query);
+		
+			
+			//prep.setInt(1, Integer.parseInt(userData.get(TableHeaders.getJTableColNameByColIndex(1)).getText()));
+			prep.setInt(1, 0);
+			prep.setString(2, userData.get(TableHeaders.getJTableColNameByColIndex(2)).getText());
+			prep.setString(3, userData.get(TableHeaders.getJTableColNameByColIndex(3)).getText());
+			prep.setString(4, userData.get(TableHeaders.getJTableColNameByColIndex(4)).getText());
+			prep.setString(5, userData.get(TableHeaders.getJTableColNameByColIndex(5)).getText());
+			prep.setString(6, userData.get(TableHeaders.getJTableColNameByColIndex(6)).getText());
+			prep.setString(7, userData.get(TableHeaders.getJTableColNameByColIndex(7)).getText());
+			prep.setString(8, userData.get(TableHeaders.getJTableColNameByColIndex(8)).getText());
+			prep.setString(9, userData.get(TableHeaders.getJTableColNameByColIndex(9)).getText());
+			prep.setString(10, userData.get(TableHeaders.getJTableColNameByColIndex(10)).getText());
+			prep.setString(11, userData.get(TableHeaders.getJTableColNameByColIndex(11)).getText());
+			prep.setString(12, userData.get(TableHeaders.getJTableColNameByColIndex(12)).getText());
+			prep.setString(13, userData.get(TableHeaders.getJTableColNameByColIndex(13)).getText());
+			prep.setString(14, userData.get(TableHeaders.getJTableColNameByColIndex(14)).getText());
+			prep.setString(15, userData.get(TableHeaders.getJTableColNameByColIndex(15)).getText());
+			prep.setString(16, userData.get(TableHeaders.getJTableColNameByColIndex(16)).getText());
+			//prep.setDate(18, userData.get(TableHeaders.getDBColNameByColIndex(16)).getText());
+			
+			// DATE-PROBLEM		
+			prep.setDate(17, null);
+			prep.executeUpdate();
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	private String generateUpdateQuery() {
-		String query = "UPDATE prospects SET " +
+		StringBuilder builder = new StringBuilder();
+		builder.append("UPDATE prospects SET ");
+		int colCount = TableHeaders.getColCount();
+		for (int i = 1; i < colCount; i++) {
+			builder.append(String.format("%s = ?, ", TableHeaders.getDBColNameByColIndex(i)));
+		}
+		
+		builder.setLength(builder.length() - 2);
+		builder.append(" WHERE ID = ?");
+		return builder.toString();
+				
+				
+				/*"UPDATE prospects SET " +
 				"Status = '%s', " +
 				"Interesse_an = '%s', " +
                 "Vorname = '%s', " +
@@ -320,7 +385,7 @@ private int selectedRow;
                 userData.get("PLZ").getText(),
                 userData.get("Stadt").getText(),
                 userData.get("Werbemassnahmen").getText(),
-                userData.get("id").getText());
+                userData.get("id").getText());*/
 	}
 
 }

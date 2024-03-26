@@ -186,15 +186,18 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		table.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				int rowInView = table.getSelectedRow();
-				
-				
-				int selectedRow = table.convertRowIndexToModel(rowInView);
+				// table.getSelectedRow() liest den viewIndex der Reihe aus, auf die geklickt wurde. Im viewIndex sind die Daten so sortiert, wie sie initial zum JTable hinzugefügt wurden
+				// Bei Sortierung oder Filterung ändert sich der viewIndex nicht, sondern nur der index im Tabellenmodell. Daher muss der der viewIndex hier in den model Index konvertiert werden
+				int selectedRow = table.convertRowIndexToModel(table.getSelectedRow());
 				
 				// Daten aus der selektierten Reihe auslesen
 				HashMap<String, String> rowData = new HashMap<>();
 				for (int i = 0; i < colNames.length; i++) {
-					rowData.put(colNames[i], model.getValueAt(selectedRow, i).toString());
+					Object tableCellValue = model.getValueAt(selectedRow, i);
+					String cellValueToString = (tableCellValue != null) ? tableCellValue.toString() : "";
+					rowData.put(colNames[i],cellValueToString);
+					
+					//rowData.put(colNames[i], model.getValueAt(selectedRow, i).toString());
 				}
 				
 				// ProspectsPopUp öffnen und userdaten in die Felder einfügen
