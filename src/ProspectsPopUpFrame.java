@@ -21,7 +21,7 @@ private static final long serialVersionUID = 1L;
 private String[] colNames = TableHeaders.getJTableHeaders();
 private HashMap<String, JTextField> userData;
 private JFrame frame;
-private JTextField[] dataFields;
+//private JTextField[] dataFields;
 private HashMap<String, String> rowData;
 private boolean editUser;
 private int selectedRow;
@@ -29,8 +29,6 @@ private int selectedRow;
 		
 	public ProspectsPopUpFrame() {
 		editUser = false;
-		//this.colNames = colNames;
-		
 		setUpFrame();
 	}
 	
@@ -38,8 +36,6 @@ private int selectedRow;
 		editUser = true;
 		this.rowData = rowData;
 		this.selectedRow = selectedRow;
-		//this.colNames = colNames;
-		
 		setUpFrame();
 	}
 	
@@ -99,13 +95,13 @@ private int selectedRow;
 		return button;
 	}
 	
-	
 	private void addInputFields(JPanel panel) {
-		dataFields = new JTextField[colNames.length - 1];
+		//dataFields = new JTextField[colNames.length - 1];
 		for (int i = 0; i < colNames.length; i++) {
 			JPanel itemPanel = new JPanel(new GridLayout(0, 1, 8, 8));
 			
-			if (colNames[i] != "ID") {
+			// Für das ID Feld soll kein Textfeld mit Label erstellt werden
+			if (colNames[i] != TableHeaders.getDBColNameByColIndex(0)) {
 				userData.put(colNames[i], new JTextField(15));
 				itemPanel.add(new JLabel(colNames[i]));
 				itemPanel.add(userData.get(colNames[i]));
@@ -115,7 +111,7 @@ private int selectedRow;
 	}
 	
 	public void addInputFieldsEdit(JPanel panel) {
-		dataFields = new JTextField[colNames.length];
+		//dataFields = new JTextField[colNames.length];
 		for (int i = 0; i < colNames.length; i++) {
 			JPanel itemPanel = new JPanel(new GridLayout(0, 1, 8, 8));
 			userData.put(colNames[i], new JTextField(rowData.get(colNames[i]), 15));
@@ -143,7 +139,7 @@ private int selectedRow;
 			}
 			else {
 				// Neuen Interessenten hinzufügen
-				String colNamesStr = buildColStringForQuery();
+				String colNamesStr = buildColStringForInsertQuery();
 				query = String.format("INSERT INTO prospects (%s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", colNamesStr);
 				updateDatabaseTable(query);
 				addNewProspectToJTable();
@@ -156,17 +152,21 @@ private int selectedRow;
 	}
 	
 	private void updateExistingProspectInJTable() {
-		String insertQuery = generateUpdateQuery();
-		Statement statement = null;
+		//String insertQuery = generateUpdateQuery();
+		PreparedStatement prep = null;
 		ResultSet rs = null;
 		try {
-			statement = Database.createStatement();
-			statement.executeUpdate(insertQuery);
-			MyTableModel model = MyTableModel.getModel();
 			
 			// Geänderte Zeile in der Datenbank auswählen
-			String getInsertQuery = String.format("SELECT * FROM prospects WHERE ID = %s", userData.get("ID"));
-			rs = statement.executeQuery(getInsertQuery);
+			String findInsertQuery = String.format("SELECT * FROM prospects WHERE %s = ?", TableHeaders.getDBColNameByColIndex(0)); // 0: "ID"
+			
+			Connection connect = Database.getConnection();
+			prep = connect.prepareStatement(findInsertQuery);
+			
+			System.out.println(userData.get(TableHeaders.getDBColNameByColIndex(0)).getText());
+			
+			prep.setInt(1, Integer.parseInt(userData.get(TableHeaders.getDBColNameByColIndex(0)).getText()));
+			rs = prep.executeQuery();
 			
 			// Spaltenanzahl bekommen --> entspricht der Anzahl von Überschriften
 			/*ResultSetMetaData rsmetadata = rs.getMetaData();
@@ -174,6 +174,7 @@ private int selectedRow;
 			int colCount = TableHeaders.getColCount();
 			
 			// Zeile im JTable mit den neu eingegebenen Daten updaten
+			MyTableModel model = MyTableModel.getModel();
 			for (int i = 0; i < colCount; i++) {
 				model.setValueAt(rs.getString(i + 1), selectedRow, i);
 			}
@@ -182,30 +183,35 @@ private int selectedRow;
 			e1.printStackTrace();
 		}
 		finally {
-			Database.closeResultSetAndStatement(rs);
+			Database.closeResultSetAndPreparedStatement(rs, prep);
 		}
 	}
 	
 	private void addNewProspectToJTable() {
-		Statement statement = null;
+		PreparedStatement prep = null;
 		ResultSet rs = null;
 		try {
-			MyTableModel model = MyTableModel.getModel();
 			
 			// Die soeben hinzugefügte Zeile in der Datenbank auswählen
-			statement = Database.createStatement();
-			String getInsertQuery = "SELECT * FROM prospects ORDER BY ID DESC LIMIT 1";
-			rs = statement.executeQuery(getInsertQuery);
+			String findInsertQuery = String.format("SELECT * FROM prospects ORDER BY %s DESC LIMIT ?", TableHeaders.getDBColNameByColIndex(0)); // 0: "ID"
+			
+			Connection connect = Database.getConnection();
+			prep = connect.prepareStatement(findInsertQuery);
+			prep.setInt(1, 1);
+			rs = prep.executeQuery();
 			
 			// Spaltenanzahl bekommen
-			ResultSetMetaData rsmetadata = rs.getMetaData();
-			int colCount = rsmetadata.getColumnCount();
+			/*ResultSetMetaData rsmetadata = rs.getMetaData();
+			int colCount = rsmetadata.getColumnCount();*/
+			int colCount = TableHeaders.getColCount();
 			String[] row = new String[colCount];
 			
 			// Daten aus der letzten Tabellenzeile zum Tabellenmodell hinzufügen
+			MyTableModel model = MyTableModel.getModel();
 			for (int i = 0; i < colCount; i++) {
 				row[i] = rs.getString(i + 1);
 			}	
+			
 			model.addRow(row);
 			model.fireTableDataChanged();
 			
@@ -213,41 +219,39 @@ private int selectedRow;
 			e1.printStackTrace();
 		}
 		finally {
-			Database.closeResultSetAndStatement(rs);
+			Database.closeResultSetAndPreparedStatement(rs, prep);;
 		}
 	}
 	
 	private void deleteUser() {
-		Statement statement = null;
+		PreparedStatement prep = null;
 		try {
 			MyTableModel model = MyTableModel.getModel();
 			
 			// Eintrag aus der Datenbank löschen
-			statement = Database.createStatement();
-			statement.executeUpdate(String.format("DELETE FROM prospects WHERE ID = %s", rowData.get("ID")));
+			Connection connect = Database.getConnection();
+			prep = connect.prepareStatement(String.format("DELETE FROM prospects WHERE %s = ?", TableHeaders.getDBColNameByColIndex(0))); // 0: "ID"
+			prep.setInt(1, Integer.parseInt(userData.get(TableHeaders.getDBColNameByColIndex(0)).getText()));
 			
 			// Reihe aus dem JTable löschen
 			model.removeRow(selectedRow);
 			model.fireTableDataChanged();
-			
-			// Statement schließen
-			statement.close();
-			
 		} catch (SQLException e1) {
 			e1.printStackTrace();
 		}
 		finally {
-			Database.closeStatement();
+			Database.closePreparedStatement(prep);
 		}
 	}
 	
-	private String buildColStringForQuery() {
+	private String buildColStringForInsertQuery() {
 		// Diese Methode baut einen String mit allen Spaltennamen in der Datenbank, um diesen String für Queries verwenden zu können
 		StringBuilder builder = new StringBuilder();
 		String dbHeaders[] = TableHeaders.getDBHeaders();
 		
 		for (String header : dbHeaders) {
-			if (header != "ID") {
+			// Die ID soll nicht vom User eingegeben werden
+			if (header != TableHeaders.getDBColNameByColIndex(0)) {
 				builder.append(header + ", ");				
 			}
 		}
@@ -260,9 +264,12 @@ private int selectedRow;
 	}
 	
 	private void updateDatabaseTable(String query) {
+		PreparedStatement prep = null;
 		try {
 			Connection connect = Database.getConnection();
-			PreparedStatement prep = connect.prepareStatement(query);
+			System.out.println(query);
+			System.out.println(userData.get(TableHeaders.getJTableColNameByColIndex(2)).getText());
+			prep = connect.prepareStatement(query);
 			
 			//prep.setInt(1, Integer.parseInt(userData.get(TableHeaders.getJTableColNameByColIndex(1)).getText()));
 			prep.setInt(1, 0);
@@ -285,53 +292,21 @@ private int selectedRow;
 			
 			// DATE-PROBLEM		
 			prep.setDate(17, null);
+			
+			if(editUser) {
+				// Nur wenn der User bearbeitet werden soll, müssen die Daten des Users mit der spezifizierten ID in der Datenbank selektiert werden 
+				prep.setInt(18, Integer.parseInt(userData.get(TableHeaders.getJTableColNameByColIndex(0)).getText()));
+			}
+			
 			prep.executeUpdate();
 		}
 		catch (SQLException e) {
 			e.printStackTrace();
 		}
-			
-	}
-	
-	private void executeQuery(String query) {
-		//String query = String.format("INSERT INTO prospects (%s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", colNamesStr);
-		
-		/*for (Map.Entry<String, JTextField> entry : userData.entrySet()) {
-			String key = entry.getKey();
-			String text = entry.getValue().getText();
-		}*/
-		
-		try {
-			Connection connect = Database.getConnection();
-			PreparedStatement prep = connect.prepareStatement(query);
-		
-			
-			//prep.setInt(1, Integer.parseInt(userData.get(TableHeaders.getJTableColNameByColIndex(1)).getText()));
-			prep.setInt(1, 0);
-			prep.setString(2, userData.get(TableHeaders.getJTableColNameByColIndex(2)).getText());
-			prep.setString(3, userData.get(TableHeaders.getJTableColNameByColIndex(3)).getText());
-			prep.setString(4, userData.get(TableHeaders.getJTableColNameByColIndex(4)).getText());
-			prep.setString(5, userData.get(TableHeaders.getJTableColNameByColIndex(5)).getText());
-			prep.setString(6, userData.get(TableHeaders.getJTableColNameByColIndex(6)).getText());
-			prep.setString(7, userData.get(TableHeaders.getJTableColNameByColIndex(7)).getText());
-			prep.setString(8, userData.get(TableHeaders.getJTableColNameByColIndex(8)).getText());
-			prep.setString(9, userData.get(TableHeaders.getJTableColNameByColIndex(9)).getText());
-			prep.setString(10, userData.get(TableHeaders.getJTableColNameByColIndex(10)).getText());
-			prep.setString(11, userData.get(TableHeaders.getJTableColNameByColIndex(11)).getText());
-			prep.setString(12, userData.get(TableHeaders.getJTableColNameByColIndex(12)).getText());
-			prep.setString(13, userData.get(TableHeaders.getJTableColNameByColIndex(13)).getText());
-			prep.setString(14, userData.get(TableHeaders.getJTableColNameByColIndex(14)).getText());
-			prep.setString(15, userData.get(TableHeaders.getJTableColNameByColIndex(15)).getText());
-			prep.setString(16, userData.get(TableHeaders.getJTableColNameByColIndex(16)).getText());
-			//prep.setDate(18, userData.get(TableHeaders.getDBColNameByColIndex(16)).getText());
-			
-			// DATE-PROBLEM		
-			prep.setDate(17, null);
-			prep.executeUpdate();
-			
-		} catch (SQLException e) {
-			e.printStackTrace();
+		finally {
+			Database.closePreparedStatement(prep);
 		}
+			
 	}
 	
 	private String generateUpdateQuery() {
@@ -343,49 +318,8 @@ private int selectedRow;
 		}
 		
 		builder.setLength(builder.length() - 2);
-		builder.append(" WHERE ID = ?");
+		builder.append(" WHERE " + TableHeaders.getDBColNameByColIndex(0) + " = ?");
 		return builder.toString();
-				
-				
-				/*"UPDATE prospects SET " +
-				"Status = '%s', " +
-				"Interesse_an = '%s', " +
-                "Vorname = '%s', " +
-                "Nachname = '%s', " +
-                "Telefon = '%s', " +
-                "E_Mail = '%s', " +
-                "Sprache = '%s', " +
-                "Kanal = '%s', " +
-                "Firma = '%s', " +
-                "Abteilung = '%s', " +
-                "Branche = '%s', " +
-                "Land = '%s', " +
-                "Strasse = '%s', " +
-                "Hausnummer = '%s', " +
-                "PLZ = '%s', " +
-                "Stadt = '%s', " +
-                "Werbemassnahmen = '%s' " +
-                "WHERE id = %s";
-		
-		return String.format(query,
-				userData.get("Status").getText(),
-                userData.get("Interesse_an").getText(),
-                userData.get("Vorname").getText(),
-                userData.get("Nachname").getText(),
-                userData.get("Telefon").getText(),
-                userData.get("E_Mail").getText(),
-                userData.get("Sprache").getText(),
-                userData.get("Kanal").getText(),
-                userData.get("Firma").getText(),
-                userData.get("Abteilung").getText(),
-                userData.get("Branche").getText(),
-                userData.get("Land").getText(),
-                userData.get("Strasse").getText(),
-                userData.get("Hausnummer").getText(),
-                userData.get("PLZ").getText(),
-                userData.get("Stadt").getText(),
-                userData.get("Werbemassnahmen").getText(),
-                userData.get("id").getText());*/
 	}
 
 }

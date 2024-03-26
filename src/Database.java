@@ -60,6 +60,15 @@ public class Database {
         return null;
 	}
 	
+	public static void closePreparedStatement(PreparedStatement prep) {
+		if (prep != null) {
+			try {
+				prep.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}		
+	}
 	
 	public static void closeStatement() {
 		try {
@@ -100,6 +109,11 @@ public class Database {
 	public static void closeResultSetAndStatement(ResultSet rs) {
 		closeResultSet(rs);
 		closeStatement();
+	}
+	
+	public static void closeResultSetAndPreparedStatement(ResultSet rs, PreparedStatement prep) {
+		closeResultSet(rs);
+		closePreparedStatement(prep);
 	}
 
 }
