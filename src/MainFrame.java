@@ -46,6 +46,7 @@ import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.Color;
 
 public class MainFrame extends JFrame implements KeyListener, ActionListener {
 
@@ -53,101 +54,78 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	
 	private JFrame frame;
 	private JPanel contentPane;
-	//private JPanel centerPanel;
 	private JTable table;
 	private DefaultTableModel model;
 	private String[] colNames = TableHeaders.getJTableHeaders();
-	private Map<JTextField, String> textFieldMap;
+	private Map<String, JTextField> textFieldMap;
 	private TableRowSorter<DefaultTableModel> myTableRowSorter;
-	//private Connection base;
 	
 	
 	public MainFrame() {
 		// Mit Database verbinden
 		Database.connectToDatabase();
 		
-		// HashMap mit TableHeaders aufbauen
-		//TableHeaders.buildMap();
-		
-		
-		// Frame erstellen, Icon hinzufügen und andere Grundeigenschaften setzen
+		// Frame erstellen, Icon hinzufügen und andere Grundeigenschaften festlegen
 		frame = new JFrame();
 		ImageIcon icon = new ImageIcon("MainIcon.png");
 		frame.setIconImage(icon.getImage());
-		//frame.setIconImage(Toolkit.getDefaultToolkit().getImage("D:\\Beruf\\Ausbildung\\Eclipse Workspace\\JP Interessentenverwaltung\\MainIcon.png"));
 		frame.setTitle("Interessentenverwaltung");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
-		// Frame maximiert anzeigen (BOTH: Maximierte Höhe und Breite in Abhängigkeit von der Bildschirmgröße)
+		// Frame beim Starten der App maximiert anzeigen (BOTH: Maximierte Höhe und Breite in Abhängigkeit von der Bildschirmgröße)
 		frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-		
-        /*Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        frame.setSize(screenSize.width, screenSize.height);*/
 		
 		// Initiale Größe des Frames beim Minimieren
 		frame.setBounds(100, 100, 800, 500);
 		
+		// Panel für den Content erstellen
 		contentPane = new JPanel();
-		//contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		contentPane.setLayout(new BorderLayout());
 		frame.setContentPane(contentPane);
 
-		// Menü erstellen und zum North-Region hinzufügen
-		//JMenuBar menuBar = new JMenuBar();
+		// Menü erstellen und zur North-Region hinzufügen
 		JMenuBar menuBar = setupMenuBar();
 		contentPane.add(menuBar, BorderLayout.NORTH);
 		
-		/*JMenu fileMenu = new JMenu("Datei");
-		menuBar.add(fileMenu);
-		
-		JMenuItem closeItem = new JMenuItem("Schließen");
-		closeItem.setActionCommand("exit");
-		closeItem.addActionListener(this);
-		fileMenu.add(closeItem);
-		
-		JMenuItem addUser = new JMenuItem("Benutzer hinzufügen");
-		addUser.setActionCommand("addNewUser");
-		addUser.addActionListener(this);
-		fileMenu.add(addUser);
-		
-		JMenu helpMenu = new JMenu("Hilfe");
-		menuBar.add(helpMenu);*/
-		
 		// Panel zum Anzeigen der Daten aus der DB zur Center-Region hinzufügen
-		JScrollPane scrollTablePane = setupCenterPanel();
-		//JPanel centerPanel = setupCenterPanel();
-		contentPane.add(scrollTablePane, BorderLayout.CENTER);
+		JPanel centerPanel = setupCenterPanel();
+		contentPane.add(centerPanel, BorderLayout.CENTER);
 		
 		// Panel für Suche und Filterung der Daten zur East-Region hinzufügen
 		JScrollPane scrollSearchPane = setupSearchPanel();
         contentPane.add(scrollSearchPane, BorderLayout.EAST);
         
-        //frame.pack();
+        // Frame sichtbar machen
 		frame.setVisible(true);
 	}
 	
 	private JScrollPane setupSearchPanel() {
-        JPanel searchPanel = new JPanel(new GridLayout(0, 1, 10, 10));
-        searchPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
-        searchPanel.add(new JLabel("Suche", SwingConstants.CENTER));
+        JPanel searchPanel = new JPanel(new GridLayout(0, 1, 10, 10)); // keine Reihen, 1 Spalte
+        searchPanel.setBorder(new EmptyBorder(10, 10, 10, 10)); // 10 px "Padding" an allen Seiten
+        searchPanel.add(new JLabel("Suche", SwingConstants.CENTER)); // Text "Suche" wird ganz oben im Panel mittig zentriert angezeigt
         
         // Die Textfelder und der Name des Feldes werden über eine HashMap "verbunden". So kann festgestellt werden, in welchen Tabellenspalten gefiltert werden soll.
         textFieldMap = new HashMap<>();
         
         for (String colName : colNames) {
-        	JPanel itemPanel = new JPanel(new GridLayout(0, 1, 5,5));
+        	// In jedes Item-Panel kommt eine Überschrift (diese entspricht je einer Spaltenüberschrift des JTables) und ein dazugehöriges Suchfeld
+        	JPanel itemPanel = new JPanel(new GridLayout(0, 1, 5, 5)); // keine Reihen, 1 Spalte --> Das Label und das Textfeld werden untereinander in einer Spalte angezeigt
             JLabel label = new JLabel(colName);
-            JTextField textField = new JTextField(15); // Breite: 15px
+            JTextField textField = new JTextField(15); // Breite des Textfeldes: 15px
             textField.addKeyListener(this);
             
+            // Label mit Überschrift und Textfeld zum Panel hinzufügen
             itemPanel.add(label);
             itemPanel.add(textField);
             
-            textFieldMap.put(textField, colName);
-
+            // Panel mit Überschrift und Textfeld zum SearchPanel hinzufügen
             searchPanel.add(itemPanel);
+            
+            // Spaltenname (Key) und dazugehöriges Textfeld (Value) zur Hashmap hinzufügen
+            textFieldMap.put(colName, textField);
         }
         
+        // Scrollbar zum SearchPanel hinzufügen
         JScrollPane scrollSearchPane = new JScrollPane(searchPanel);
         scrollSearchPane.setPreferredSize(new Dimension(400, 0));
         
@@ -157,13 +135,13 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	private JMenuBar setupMenuBar() {
 		JMenuBar menuBar = new JMenuBar();
 		
-		// Datei-Menü erstellen
+		// Datei-Menü erstellen und zur Menübar hinzufügen
 		JMenu fileMenu = new JMenu("Datei");
 		fileMenu.add(createMenuItem("Schließen", "exit"));
 		fileMenu.add(createMenuItem("Benutzer hinzufügen", "addNewUser"));
 		menuBar.add(fileMenu);
 		
-		// HilfeMenü erstellen
+		// HilfeMenü erstellen und zur Menübar hinzufügen
 		JMenu helpMenu = new JMenu("Hilfe");
 		menuBar.add(helpMenu);
 		
@@ -171,58 +149,61 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	}
 	
 	private JMenuItem createMenuItem(String label, String command) {
+		// Fügt einem Menuitem einen Anzeigetext, einen ActionCommand und einen ActionListener hinzu
 		JMenuItem item = new JMenuItem(label);
 		item.setActionCommand(command);
 		item.addActionListener(this);
 		return item;
 	}
 	
-	private JScrollPane setupCenterPanel() {
+	private JPanel setupCenterPanel() {
 		// Im CenterPanel werden die Daten aus der Datenbank in einem JTable angezeigt
+		
 		// Daten aus der Datenbank auslesen und in einem TableModel speichern
 		getTableData();
 		
+		// JTable mit dem zuvor erstellten Tabellenmodell initialisieren
 		table = new JTable(model);
+		
+		// MouseListener zum JTable hinzufügen
 		table.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
+				// Nur bei einem Linksklick soll sich ein PopUp-Fenster öffnen, in dem die Interessentendaten aus der Reihe, auf die geklickt wurde, angezeigt werden
+				if (e.getButton() != MouseEvent.BUTTON1) { 
+		            return;
+		        }
+				
 				// table.getSelectedRow() liest den viewIndex der Reihe aus, auf die geklickt wurde. Im viewIndex sind die Daten so sortiert, wie sie initial zum JTable hinzugefügt wurden
 				// Bei Sortierung oder Filterung ändert sich der viewIndex nicht, sondern nur der index im Tabellenmodell. Daher muss der der viewIndex hier in den model Index konvertiert werden
 				int selectedRow = table.convertRowIndexToModel(table.getSelectedRow());
 				
-				// Daten aus der selektierten Reihe auslesen
+				// Daten aus der selektierten Reihe auslesen und in einer HashMap abspeichern
+				// Struktur der Map --> Key: Spaltenüberschrift, Value: Text in der Zelle der entsprechenden Spalte innerhalb der angeklickten Reihe
 				HashMap<String, String> rowData = new HashMap<>();
 				for (int i = 0; i < colNames.length; i++) {
 					Object tableCellValue = model.getValueAt(selectedRow, i);
 					String cellValueToString = (tableCellValue != null) ? tableCellValue.toString() : "";
 					rowData.put(colNames[i],cellValueToString);
-					
-					//rowData.put(colNames[i], model.getValueAt(selectedRow, i).toString());
 				}
 				
-				// ProspectsPopUp öffnen und userdaten in die Felder einfügen
+				// ProspectsPopUp mit Interessentendaten anzeigen
 				new ProspectsPopUpFrame(rowData, selectedRow);
 			}
 		});
 		
 		
-		// Scrollbar und Tablesorter zum JTable hinzufügen
+		// Scrollbar und TableRowSorter zum JTable hinzufügen
 		JScrollPane scrollPane = new JScrollPane(table);
-		myTableRowSorter = new TableRowSorter<>(model);
-		myTableRowSorter.setComparator(0, Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
-		myTableRowSorter.setComparator(1, Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
-		myTableRowSorter.setComparator(13, Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
-		myTableRowSorter.setComparator(15, Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
 		table.setRowSorter(myTableRowSorter);
 		
+		// JPanel erstellen und JScrollPane mit JTable hinzufügen
 		JPanel centerPanel = new JPanel();
 		centerPanel.setLayout(new BorderLayout());
+		centerPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 		centerPanel.add(scrollPane);
 		
-		JScrollPane scrollTablePane = new JScrollPane(centerPanel);
-		 scrollTablePane.setPreferredSize(new Dimension(400, 0));
-		return scrollTablePane;
-		//contentPane.add(centerPanel, BorderLayout.CENTER);
+		return centerPanel;
 	}
 	
 	private void getTableData() {
@@ -235,36 +216,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		// Daten aus der DB auslesen und zum TableModel hinzufügen		
 		Statement statement = null;
 		ResultSet rs = null;
-		
 		try {
-			
-			
-			// TableModel aus der MyTableModel Klasse bekommen
-			//model = MyTableModel.getModel();
-			
-			// Überschriften zum JTable hinzufügen
-			//model.setColumnIdentifiers(TableHeaders.getJTableHeaders());
-			
-			
-			// Spaltenanzahl bekommen --> entspricht der Anzahl von Einträgen in der TableHeaders HashMap
-			/*ResultSetMetaData rsmetadata = rs.getMetaData();
-			int colCount = rsmetadata.getColumnCount();*/
-			//int colCount = TableHeaders.getColCount();
-			
-			// Überschriften der Spalten aus den Metadaten auslesen
-			/*colNames = new String[colCount];
-			for (int i = 0; i < colCount; i++) {
-				String colNameDB = rsmetadata.getColumnLabel(i + 1);
-				System.out.println(colNameDB);
-				
-				// Überschrift für den JTable zum Array hinzufügen
-				// Frage: Warum dieser Aufwand. Theoretisch könnte man auch einfach die Überschriften in eine LinkedList packen und sie einfach blind in den JTable schreiben
-				// Vorteil hierbei: Wenn sich die Reihenfolge der Einträge in der Datenbank ändert, funktioniert diese Methode weiterhin, weil alles abgeglichen wird
-				colNames[i] = TableHeaders.getJTableColName(colNameDB);
-				
-				
-			}*/
-			
 			statement = Database.createStatement();
 			rs = statement.executeQuery("SELECT * FROM prospects");
 			
@@ -273,15 +225,28 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 			
 			// Daten aus der Datenbank auslesen, solange es noch welche gibt...
 			while (rs.next()) {
+				
+				// Für jedes ResultSet: String Array erstellen
 			    String[] row = new String[colCount];
 			    for (int i = 0; i < colCount; i++) {
+			    	// Daten aus akt. ResultSet in String abspeichern und zum Array hinzufügen
 			    	String currentRsValue = rs.getString(i + 1);
 			    	row[i] = currentRsValue == null ? "" : currentRsValue; 
 			    }
 			    
-			    // Aktuelle Reihe zum JTable hinzufügen
+			    // Daten aus dem akt. ResultSet (Reihe) zum Tabellenmodell hinzufügen
 			    model.addRow(row);
 			}
+			
+			// RowSorter mit Hilfe des Tabellenmodells erstellen
+			myTableRowSorter = new TableRowSorter<>(model);
+			
+			// Die Spalten Priorität und ID sollen beim Sortieren Integers vergleichen, keine Strings. Nur so werden die Zahlen richtig sortiert
+			// Bei den Spalten "PLZ" und "Hausnummer" habe ich die Textsortierung beibehalten, weil die Hausnummer auch andere Zeichen als Ziffern enthalten kann.
+			// Dies gilt in einigen Ländern auch für die PLZ
+			myTableRowSorter.setComparator(TableHeaders.getJTableColNumByJTableColName("ID"), Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
+			myTableRowSorter.setComparator(TableHeaders.getJTableColNumByJTableColName("Priorität"), Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
+			
 		} 
 		catch (SQLException e) {
 			e.printStackTrace();
@@ -291,19 +256,6 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		}
 	}
 	
-	/*private int findColumnNumber(String columnName) {
-        TableColumnModel columnModel = table.getColumnModel();
-        int columnCount = columnModel.getColumnCount();
-        for (int i = 0; i < columnCount; i++) {
-            TableColumn column = columnModel.getColumn(i);
-            String currentColumnName = (String) column.getHeaderValue();
-            if (currentColumnName.equals(columnName)) {
-                return i; 
-            }
-        }
-        return -1; // Return -1, wenn Spalte nicht gefunden
-    }*/
-	
 	// ActionListener für Buttons
 	@Override
 	public void actionPerformed(ActionEvent e) {
@@ -311,9 +263,11 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		
 		switch (command) {
 		case "addNewUser":
+			// Ein neuer User wird hinzugefügt
 			new ProspectsPopUpFrame();
 			break;
 		case "exit":
+			// App wird komplett geschlossen
 			System.exit(0);
 			break;
 		}
@@ -329,43 +283,50 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 
 	@Override
 	public void keyPressed(KeyEvent e) {
-		// TODO Auto-generated method stub
+	
 		
 	}
 
 	@Override
 	public void keyReleased(KeyEvent e) {
-		// User hat Suchtext eingegeben --> Tabelle filtern... --Field in der HashMap suchen
-		/*JTextField selectedField = (JTextField) e.getSource();
-		String colName = textFieldMap.get(selectedField);
-		int colNum = findColumnNumber(colName);*/
+		// Ein KeyListener ist nur für die Such-Textfelder eingerichtet. Jeder Keystroke führt dazu, dass die Tabelle neu gefiltert wird
+		// Diese Vorgehensweise ist User-freundlicher, da der User in Echtzeit die Ergebnisse seiner Suche sieht. Allerdings würde die Suche über
+		// einen Button, der gedrückt wird, wenn alle Suchkriterien eingegeben wurden, deutlich weniger Rechenleistung erfordern.
 		filterTable();
 	}
 	
 	public void filterTable() {
-		// In dieser ArrayList werden alle gefilterten Reihen angezeigt --> Grö
+		// In dieser ArrayList werden alle Filterkriterien abgespeichert, die bei der Filterung der Reihen beachtet werden sollen
+		// Ein einzelner RowFilter filtert Reihen nach vorgegebenen Kriterien heraus. Wir wollen hier mehrere Filterkriterien auf einmal beachten
+		// Daher erstellen wir zunächst eine ArrayListe, in der jedes dieser Kriterien als RowFilter abgespeichert wird. Am Ende können wir die Einzelfilter kombinieren
+		// Die Einzelfilter sind in unserem Fall regex-Filter. Das heißt: Wir filtern Reihen mit den Kriterien heraus, dass gewisse Spalten innerhalb der Reihe einen Suchtext enthalten
 		ArrayList<RowFilter<TableModel, Object>> colFilters = new ArrayList<>();
 		
-		// Durch Hashmap mit JTextfields loopen
-		for (Map.Entry<JTextField, String> entry : textFieldMap.entrySet()) {
+		// Durch Hashmap mit den JTextfields loopen
+		for (Map.Entry<String, JTextField> entry : textFieldMap.entrySet()) {		
+			// Überschrift (Key) und Textfeld (value) des akt. Entrys bekmmen --> Die Überschrift entspricht dem dazugehörigen Spaltennamen im JTable
+			String colName = entry.getKey();
+			JTextField currentField = entry.getValue();
 			
-			// Textfield und column Name des akt. Entrys bekmmen
-			JTextField currentField = entry.getKey();
-			String colName = entry.getValue();
+			// searchText: Der Text, den der User in das Textfield eingegeben hat
 			String searchText = currentField.getText();
-			int colNum = TableHeaders.getJTableColNumByJTableColName(colName);
 			
-			// Filter für akt. Col. in der Tabelle zum Filter-Array hinzufügen, wenn Suchtext nicht leer ist
+			// Filter für die enstprechende Spalte in der Tabelle zum Filter-Array hinzufügen, wenn der User Suchtext eingegeben hat
 			if (searchText != "") {
+				// mit Hilfe der Überschrift über dem JTextfield können wir die Spaltennummer im JTable finden
+				int colNum = TableHeaders.getJTableColNumByJTableColName(colName);
+				
+				// regex-Filter: Filtert Reihen mit dem Kriterium, dass die Spalte mit der Spaltennummer colNum den Suchtext erhalten
 				colFilters.add(RowFilter.regexFilter(currentField.getText(), colNum));
 			}
 		}
 		
-		// Filter von allen Cols kombinieren
+		// An dieser Stelle haben wir jetzt alle Einzelfilter im Array abgespeichert.
+		// Damit alle Filterkriterien GEMEINSAM bei der Filterung der Reihen beachtet werden, wird daraus nun ein kombinierter Filter erstellt
 		RowFilter<TableModel, Object> compoundFilter = RowFilter.andFilter(colFilters);
 		
 		// Kombinierten Filter zum RowSorter hinzufügen
-		myTableRowSorter.setRowFilter(compoundFilter);		
+		myTableRowSorter.setRowFilter(compoundFilter);
 	}
 		
 	

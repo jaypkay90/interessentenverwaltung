@@ -21,7 +21,6 @@ private static final long serialVersionUID = 1L;
 private String[] colNames = TableHeaders.getJTableHeaders();
 private HashMap<String, JTextField> userData;
 private JFrame frame;
-//private JTextField[] dataFields;
 private HashMap<String, String> rowData;
 private boolean editUser;
 private int selectedRow;
@@ -96,17 +95,23 @@ private int selectedRow;
 	}
 	
 	private void addInputFields(JPanel panel) {
-		//dataFields = new JTextField[colNames.length - 1];
 		for (int i = 0; i < colNames.length; i++) {
 			JPanel itemPanel = new JPanel(new GridLayout(0, 1, 8, 8));
+				
+			JTextField inputField = new JTextField(15);
 			
-			// Für das ID Feld soll kein Textfeld mit Label erstellt werden
-			if (colNames[i] != TableHeaders.getDBColNameByColIndex(0)) {
-				userData.put(colNames[i], new JTextField(15));
-				itemPanel.add(new JLabel(colNames[i]));
-				itemPanel.add(userData.get(colNames[i]));
-				panel.add(itemPanel);				
+			// Das Textfeld für die Interessenten-ID soll nicht editierbar sein
+			if (colNames[i].equals("ID")) {
+				System.out.println(colNames[i]);
+				inputField.setEnabled(false);
 			}
+			
+			userData.put(colNames[i], inputField);
+			
+			itemPanel.add(new JLabel(colNames[i]));
+			itemPanel.add(userData.get(colNames[i]));
+			
+			panel.add(itemPanel);				
 		}
 	}
 	
@@ -114,9 +119,20 @@ private int selectedRow;
 		//dataFields = new JTextField[colNames.length];
 		for (int i = 0; i < colNames.length; i++) {
 			JPanel itemPanel = new JPanel(new GridLayout(0, 1, 8, 8));
-			userData.put(colNames[i], new JTextField(rowData.get(colNames[i]), 15));
+			
+			JTextField inputField = new JTextField(rowData.get(colNames[i]), 15);
+			
+			// Das Textfeld für die Interessenten-ID soll nicht editierbar sein
+			if (colNames[i].equals("ID")) {
+				System.out.println(colNames[i]);
+				inputField.setEnabled(false);
+			}
+			
+			userData.put(colNames[i], inputField);
+			
 			itemPanel.add(new JLabel(colNames[i]));
 			itemPanel.add(userData.get(colNames[i]));
+			
 			panel.add(itemPanel);				
 		}
 	}
@@ -232,6 +248,7 @@ private int selectedRow;
 			Connection connect = Database.getConnection();
 			prep = connect.prepareStatement(String.format("DELETE FROM prospects WHERE %s = ?", TableHeaders.getDBColNameByColIndex(0))); // 0: "ID"
 			prep.setInt(1, Integer.parseInt(userData.get(TableHeaders.getDBColNameByColIndex(0)).getText()));
+			prep.executeUpdate();
 			
 			// Reihe aus dem JTable löschen
 			model.removeRow(selectedRow);

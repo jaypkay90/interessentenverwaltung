@@ -46,7 +46,6 @@ public class Database {
         return null;
     }
 	
-	////////////////////////////////////////////////////////////////////////////
 	public static PreparedStatement createPreparedStatement(String query) {
 		try {
         	// Wenn Verbindung zur DB besteht: Statement Instanz erstellen
