@@ -2,11 +2,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class TableHeaders {
-	//private static HashMap<String, Object[]> headers;
 	private static LinkedHashMap<Integer, String[]> headers;
 	private static int colCount;
 	private static String[] jTableHeaders;
 	private static String[] dbHeaders;
+	private static String insertQueryHeadersString;
+	private static String updateQueryHeadersString;
 	
 	static {
 		headers = new LinkedHashMap<>();
@@ -31,6 +32,8 @@ public class TableHeaders {
 		
 		colCount = headers.size();
 		storeColNamesInArrays();
+		buildHeadersStringForInsertQuery();
+		buildHeadersStringForUpdateQuery();
 		
 		
 		/*headers.put("ID", new Object[]{"ID", 0});
@@ -53,10 +56,6 @@ public class TableHeaders {
 		headers.put("Erinnerung", new Object[]{"Erinnerung", 17});*/
 	}
 	
-	/*public static  LinkedHashMap<Integer, String[]> getHeaders() {
-		return headers;
-	}*/
-	
 	public static String getDBColNameByColIndex(int colIndex) {
 		return dbHeaders[colIndex];
 	}
@@ -75,6 +74,14 @@ public class TableHeaders {
 	
 	public static String[] getDBHeaders() {
 		return dbHeaders;
+	}
+	
+	public static String getInsertQueryHeadersString() {
+		return insertQueryHeadersString;
+	}
+	
+	public static String getUpdateQueryHeadersString() {
+		return updateQueryHeadersString;
 	}
 	
 	public static int getJTableColNumByDbColName(String dbColName) {
@@ -106,4 +113,37 @@ public class TableHeaders {
 			i++;
 		}
 	}
+	
+	private static void buildHeadersStringForInsertQuery() {
+		// Diese Methode baut einen String mit allen Spaltennamen in der Datenbank, um diesen String für Queries verwenden zu können
+		StringBuilder builder = new StringBuilder();
+		String dbHeaders[] = TableHeaders.getDBHeaders();
+		
+		for (String header : dbHeaders) {
+			// Die ID soll nicht vom User eingegeben werden
+			if (header != TableHeaders.getDBColNameByColIndex(0)) {
+				builder.append(header + ", ");				
+			}
+		}
+		
+		String colNamesStr = builder.toString();
+		colNamesStr = colNamesStr.substring(0, builder.length() - 2);
+		System.out.println(colNamesStr);
+		
+		insertQueryHeadersString = colNamesStr.toString();
+	}
+	
+	private static void buildHeadersStringForUpdateQuery() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("UPDATE prospects SET ");
+		int colCount = TableHeaders.getColCount();
+		for (int i = 1; i < colCount; i++) {
+			builder.append(String.format("%s = ?, ", TableHeaders.getDBColNameByColIndex(i)));
+		}
+		
+		builder.setLength(builder.length() - 2);
+		builder.append(" WHERE " + TableHeaders.getDBColNameByColIndex(0) + " = ?");
+		updateQueryHeadersString = builder.toString();
+	}
+	
 }

@@ -14,6 +14,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -231,7 +232,17 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 			    for (int i = 0; i < colCount; i++) {
 			    	// Daten aus akt. ResultSet in String abspeichern und zum Array hinzufügen
 			    	String currentRsValue = rs.getString(i + 1);
-			    	row[i] = currentRsValue == null ? "" : currentRsValue; 
+			    	row[i] = currentRsValue == null ? "" : currentRsValue;
+			    	
+			    	if (TableHeaders.getDBColNameByColIndex(i).equals("Erinnerung")) {
+			    		if (!row[i].equals("")) {
+			    			SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
+			    			dateFormat.setLenient(false);
+			    			Date date = new Date(Long.parseLong(currentRsValue));
+			    			String dateString = dateFormat.format(date);
+			    			row[i] = dateString;
+			    		}
+			    	}
 			    }
 			    
 			    // Daten aus dem akt. ResultSet (Reihe) zum Tabellenmodell hinzufügen
