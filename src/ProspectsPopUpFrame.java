@@ -342,7 +342,22 @@ private int selectedRow;
 			// Daten aus der letzten Tabellenzeile zum Tabellenmodell hinzufügen
 			MyTableModel model = MyTableModel.getModel();
 			for (int i = 0; i < colCount; i++) {
-				row[i] = rs.getString(i + 1);
+				// Daten aus akt. ResultSet in String abspeichern und zum Array hinzufügen
+		    	String currentRsValue = rs.getString(i + 1);
+		    	row[i] = currentRsValue == null ? "" : currentRsValue;
+		    	
+		    	// CODE DOPPELT VORHANDEN --> AUCH IN MAIN FRAME
+		    	if (TableHeaders.getDBColNameByColIndex(i).equals("Erinnerung")) {
+		    		if (!row[i].equals("")) {
+		    			SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
+		    			dateFormat.setLenient(false);
+		    			Date date = new Date(Long.parseLong(currentRsValue));
+		    			String dateString = dateFormat.format(date);
+		    			row[i] = dateString;
+		    		}
+		    	}					
+					//row[i] = rs.getString(i + 1);
+				
 			}	
 			
 			model.addRow(row);
