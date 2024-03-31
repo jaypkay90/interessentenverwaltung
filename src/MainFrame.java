@@ -14,17 +14,23 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.swing.JMenuBar;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 
@@ -60,6 +66,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	private String[] colNames = TableHeaders.getJTableHeaders();
 	private Map<String, JTextField> textFieldMap;
 	private TableRowSorter<DefaultTableModel> myTableRowSorter;
+	private List<String> reminderPopupMessages;
 	
 	
 	public MainFrame() {
@@ -98,6 +105,9 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
         
         // Frame sichtbar machen
 		frame.setVisible(true);
+		
+		// Popup(s) für Erinnerungen anzeigen
+		showReminderPopups();
 	}
 	
 	private JScrollPane setupSearchPanel() {
@@ -140,6 +150,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		JMenu fileMenu = new JMenu("Datei");
 		fileMenu.add(createMenuItem("Schließen", "exit"));
 		fileMenu.add(createMenuItem("Benutzer hinzufügen", "addNewUser"));
+		fileMenu.add(createMenuItem("Auwahl als CSV exportieren", "exportCSV"));
 		menuBar.add(fileMenu);
 		
 		// HilfeMenü erstellen und zur Menübar hinzufügen
@@ -207,12 +218,22 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		return centerPanel;
 	}
 	
+	private void showReminderPopups() {
+		for (String message : reminderPopupMessages) {
+			JOptionPane.showMessageDialog(null, message, "Erinnerung", JOptionPane.INFORMATION_MESSAGE);
+		}
+	}
+	
 	private void getTableData() {
 		// TableModel aus der MyTableModel Klasse bekommen
 		model = MyTableModel.getModel();
 		
 		// Überschriften zum TableModel hinzufügen
 		model.setColumnIdentifiers(TableHeaders.getJTableHeaders());
+		
+		// ArrayList mit Reminder-Nachrichten --> Die Nachrichten, die in dieser Liste gespeichert werden, werden nach dem Start des Programms in JOptionPanes angezeigt
+		// In diese Liste kommen kommen Strings mit Reminder-Nachrichten für alle Interessenten, bei denen für das aktuelle Datum eine Erinnerung gesetzt wurde
+		reminderPopupMessages = new ArrayList<>();
 					
 		// Daten aus der DB auslesen und zum TableModel hinzufügen		
 		Statement statement = null;
@@ -230,17 +251,32 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 				// Für jedes ResultSet: String Array erstellen
 			    String[] row = new String[colCount];
 			    for (int i = 0; i < colCount; i++) {
+			    	
 			    	// Daten aus akt. ResultSet in String abspeichern und zum Array hinzufügen
 			    	String currentRsValue = rs.getString(i + 1);
 			    	row[i] = currentRsValue == null ? "" : currentRsValue;
 			    	
+			    	// Daten für die Spalte "Erinnerung" für die Anzeige in der Tabelle formatieren und zum Array hinzufügen
 			    	if (TableHeaders.getDBColNameByColIndex(i).equals("Erinnerung")) {
 			    		if (!row[i].equals("")) {
 			    			SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
-			    			dateFormat.setLenient(false);
+			    			//dateFormat.setLenient(false);
 			    			Date date = new Date(Long.parseLong(currentRsValue));
 			    			String dateString = dateFormat.format(date);
 			    			row[i] = dateString;
+			    			
+			    			// Checken ob die Erinnerung für das heutige Datum gesetzt ist. Falls ja: PopUp Message anzeigen.
+			    			DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+			    			LocalDate parsedDate = LocalDate.parse(dateString, dateFormatter);
+			    			LocalDate currentDate = LocalDate.now();
+			    			
+			    			if (currentDate.equals(parsedDate)) {
+			    				int idCol = TableHeaders.getJTableColNumByJTableColName("ID");
+			    				int vornameCol = TableHeaders.getJTableColNumByJTableColName("Vorname");
+			    				int nachnameCol = TableHeaders.getJTableColNumByJTableColName("Nachname");
+			    				String message = String.format("Erinnerung für heute gesetzt! Interessenten-ID: %s, Vorname: %s, Nachname: %s", row[idCol], row[vornameCol], row[nachnameCol]);			
+			    				reminderPopupMessages.add(message);
+			    			}   			
 			    		}
 			    	}
 			    }
@@ -248,23 +284,52 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 			    // Daten aus dem akt. ResultSet (Reihe) zum Tabellenmodell hinzufügen
 			    model.addRow(row);
 			}
-			
-			// RowSorter mit Hilfe des Tabellenmodells erstellen
-			myTableRowSorter = new TableRowSorter<>(model);
-			
-			// Die Spalten Priorität und ID sollen beim Sortieren Integers vergleichen, keine Strings. Nur so werden die Zahlen richtig sortiert
-			// Bei den Spalten "PLZ" und "Hausnummer" habe ich die Textsortierung beibehalten, weil die Hausnummer auch andere Zeichen als Ziffern enthalten kann.
-			// Dies gilt in einigen Ländern auch für die PLZ
-			myTableRowSorter.setComparator(TableHeaders.getJTableColNumByJTableColName("ID"), Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
-			myTableRowSorter.setComparator(TableHeaders.getJTableColNumByJTableColName("Priorität"), Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
-			
-		} 
+		}
 		catch (SQLException e) {
 			e.printStackTrace();
 		}
 		finally {
 			Database.closeResultSetAndStatement(rs);
 		}
+		
+		// RowSorter mit Hilfe des Tabellenmodells erstellen
+		myTableRowSorter = new TableRowSorter<>(model);
+		
+		// Die Spalten Priorität und ID sollen beim Sortieren Integers vergleichen, keine Strings. Nur so werden die Zahlen richtig sortiert
+		// Bei den Spalten "PLZ" und "Hausnummer" habe ich die Textsortierung beibehalten, weil die Hausnummer auch andere Zeichen als Ziffern enthalten kann.
+		// Dies gilt in einigen Ländern auch für die PLZ
+		myTableRowSorter.setComparator(TableHeaders.getJTableColNumByJTableColName("ID"), Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
+		myTableRowSorter.setComparator(TableHeaders.getJTableColNumByJTableColName("Priorität"), Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
+		
+		// Zur Spalte "Erinnerung" wird ein Comparator gesetzt, der die Daten der Erinnerungen vergleicht und die Spalteneinträge entsprechend sortiert
+        Comparator<String> dateComparator = (date1, date2) -> {
+        	// Leerstrings handeln --> Sie sollen in der Tabelle ganz oben/unten erscheinen
+            if (date1 == "") {
+            	// Sind die Spalteneinträge für "Erinnerung" in beiden Reihen leer? --> Gib 0 zurück (Gleicheit)
+            	// Wenn d2 nicht leer ist --> gib -1 zurück --> das "leere" Datum steht in der Tabelle VOR dem validen Datum
+                return (date2 == "") ? 0 : -1;
+            }
+            else if (date2 == "") {
+            	// Datum 2 ist ein Leerstring, Datum 1 nicht --> gib 1 zurück --> das "leere" Datum (hier Datum 2) steht in der Tabelle VOR dem "validen" Datum (hier d1)
+                return 1;
+            }
+        	
+        	try {
+                // Strings in Datum-Datentyp konvertieren
+                SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
+                java.util.Date d1 = dateFormat.parse(date1);
+                java.util.Date d2 = dateFormat.parse(date2);
+                
+                // Daten vergleichen und Ergebnis zurückgeben, wenn d1 vor d2 im Kalender ist, ist der Rückgabewert negativ
+                return d1.compareTo(d2);
+            } catch (ParseException e) {
+            	e.printStackTrace();
+            	return 0;
+            }
+        };
+
+        // Set the comparator for the "Date" column in the TableRowSorter
+        myTableRowSorter.setComparator(TableHeaders.getJTableColNumByJTableColName("Erinnerung"), dateComparator);
 	}
 	
 	// ActionListener für Buttons
@@ -276,6 +341,9 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		case "addNewUser":
 			// Ein neuer User wird hinzugefügt
 			new ProspectsPopUpFrame();
+			break;
+		case "exportCSV":
+			exportSelectionToCSV();
 			break;
 		case "exit":
 			// App wird komplett geschlossen
@@ -306,7 +374,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		filterTable();
 	}
 	
-	public void filterTable() {
+	private void filterTable() {
 		// In dieser ArrayList werden alle Filterkriterien abgespeichert, die bei der Filterung der Reihen beachtet werden sollen
 		// Ein einzelner RowFilter filtert Reihen nach vorgegebenen Kriterien heraus. Wir wollen hier mehrere Filterkriterien auf einmal beachten
 		// Daher erstellen wir zunächst eine ArrayListe, in der jedes dieser Kriterien als RowFilter abgespeichert wird. Am Ende können wir die Einzelfilter kombinieren
@@ -338,6 +406,15 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		
 		// Kombinierten Filter zum RowSorter hinzufügen
 		myTableRowSorter.setRowFilter(compoundFilter);
+	}
+	
+	private void exportSelectionToCSV() {
+		// Alle sichtbaren Reihen im JTable selektieren 
+		table.setSelectionBackground(new Color(0, 0, 0, 0));
+		table.setRowSelectionInterval(0, table.getRowCount() - 1);
+		
+		// Auswahl als CSV exportieren
+		CSVImportExport.exportCSV(table.getSelectedRows());
 	}
 		
 	

@@ -65,14 +65,6 @@ private int selectedRow;
 		JPanel userDataInputPanel = new JPanel(new GridLayout(0, 3, 15, 15));
 		userDataInputPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 		
-		
-		/*if (editUser) {
-			addInputFieldsEdit(userDataInputPanel);
-		}
-		else {
-			addInputFields(userDataInputPanel);
-		}*/
-		
 		// Überschriften und Eingabefelder zum Panel für den User-Input hinzufügen
 		addInputFields(userDataInputPanel);
 		
@@ -108,7 +100,6 @@ private int selectedRow;
 		button.addActionListener(this);
 		return button;
 	}
-	
 	
 	private void addInputFields(JPanel userDataInputPanel) {
 		// Input-Textfelder mit Überschriften zum Panel für den userInput hinzufügen
@@ -301,7 +292,7 @@ private int selectedRow;
 				
 				if (TableHeaders.getDBColNameByColIndex(i).equals("Erinnerung")) {
 		    			SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
-		    			dateFormat.setLenient(false);
+		    			//dateFormat.setLenient(false);
 		    			Date date = new Date(Long.parseLong(rs.getString(i + 1)));
 		    			String dateString = dateFormat.format(date);
 		    			model.setValueAt(dateString, selectedRow, i);
