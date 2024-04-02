@@ -12,7 +12,11 @@ public class CSVImportExport {
 	
 	public static void exportCSV(int[] selectedRows) {
 		int rowCount = selectedRows.length;
+		System.out.println(rowCount);
 		FileIO.openWriter("Interessenten.csv");
+		
+		//
+		FileIO.print('\uFEFF');
 		
 		// Überschriften in CSV Datei schreiben
 		printHeadersToCSV();
@@ -49,14 +53,8 @@ public class CSVImportExport {
 		for (int col = 0; col < colCount; col++) {
 			// Wert in der aktuellen Zelle bekommen und in String umwandeln
 			Object currentCellValue = model.getValueAt(row, col);
-			
-			String currentCellValueStr;
-			if (currentCellValue == null) {
-				currentCellValueStr = "";							
-			}
-			else {
-				currentCellValueStr = String.valueOf(currentCellValue);				
-			}
+			String currentCellValueStr = String.valueOf(currentCellValue);
+			System.out.println(currentCellValueStr);
 			
 			// Alle Werte werden durch Semikolon getrennt. Ausnahme: Nach dem letzten Wert folgt ein Zeilenumbruch
 			if (col != colCount - 1) {

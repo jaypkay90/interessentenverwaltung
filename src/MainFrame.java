@@ -391,7 +391,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 			String searchText = currentField.getText();
 			
 			// Filter für die enstprechende Spalte in der Tabelle zum Filter-Array hinzufügen, wenn der User Suchtext eingegeben hat
-			if (searchText != "") {
+			if (!searchText.equals("")) {
 				// mit Hilfe der Überschrift über dem JTextfield können wir die Spaltennummer im JTable finden
 				int colNum = TableHeaders.getJTableColNumByJTableColName(colName);
 				
@@ -409,12 +409,27 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	}
 	
 	private void exportSelectionToCSV() {
-		// Alle sichtbaren Reihen im JTable selektieren 
-		table.setSelectionBackground(new Color(0, 0, 0, 0));
-		table.setRowSelectionInterval(0, table.getRowCount() - 1);
+		int rowCount = table.getRowCount();
+		
+		// Indizes aller sichtbaren Reihen in Array speichern
+		int[] visibleRows = new int[0];
+		
+		int visibleRowCount = 0;
+		for (int i = 0; i < rowCount; i++) {
+			// Checken, ob akt. Reihe sichtbar ist, -1 wird zurückgegeben, wenn die Reihe herausgefiltert wurde
+			int currentRowInModel = myTableRowSorter.convertRowIndexToModel(i);
+			if (currentRowInModel != -1) {
+				visibleRowCount++;
+				
+				// akt. Reihe zum Array hinzufügen
+				int[] tmpArray = Arrays.copyOf(visibleRows, visibleRowCount);
+				visibleRows = tmpArray;
+				visibleRows[visibleRowCount - 1] = currentRowInModel;
+			}
+		}
 		
 		// Auswahl als CSV exportieren
-		CSVImportExport.exportCSV(table.getSelectedRows());
+		CSVImportExport.exportCSV(visibleRows);
 	}
 		
 	
