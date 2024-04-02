@@ -151,6 +151,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		fileMenu.add(createMenuItem("Schließen", "exit"));
 		fileMenu.add(createMenuItem("Benutzer hinzufügen", "addNewUser"));
 		fileMenu.add(createMenuItem("Auwahl als CSV exportieren", "exportCSV"));
+		fileMenu.add(createMenuItem("Interessenten aus CSV importieren", "importCSV"));
 		menuBar.add(fileMenu);
 		
 		// HilfeMenü erstellen und zur Menübar hinzufügen
@@ -345,6 +346,9 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		case "exportCSV":
 			exportSelectionToCSV();
 			break;
+		case "importCSV":
+			CSVImportExport.importCSV();
+			break;
 		case "exit":
 			// App wird komplett geschlossen
 			System.exit(0);
@@ -432,5 +436,9 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		CSVImportExport.exportCSV(visibleRows);
 	}
 		
-	
+	private void importCSV() {
+		// Checken, ob File valide
+		// Korrekte Spaltenüberschriften, korrekte Datentypen
+		
+	}
 }

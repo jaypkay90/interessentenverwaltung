@@ -1,0 +1,5 @@
+﻿ID;Priorität;Vorname;Nachname;Firma;Branche;Abteilung;E-Mail;Telefon;Bevorzugter Social Media Kanal;Sprache;Land;Bundesland;PLZ;Stadt;Hausnummer;Interesse an;Erinnerung
+5;5;Joshua;Kadison;Groove GmbH;Music;Production;joshua.kadison@example.com;589547546;Instagram;English;England;London;589642;London;458;Product C;
+2;4;Emily;Wilson;Tech Solutions;Technology;Development;emily.wilson@example.com;745821369;Twitter;French;France;Paris;745698;Paris;369;Product A;26.08.2029
+3;3;Alexander;Schmidt;FoodWorks;Restaurant;Chef;alexander.schmidt@example.com;632587941;Facebook;German;Germany;Berlin;632587;Berlin;582;Product B;24.05.2024
+4;2;Sophia;Lee;FashionTrend;Clothing;Design;sophia.lee@example.com;859641237;Instagram;Spanish;Spain;Madrid;741258;Madrid;369;Product C;
