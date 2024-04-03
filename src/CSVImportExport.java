@@ -91,6 +91,7 @@ public class CSVImportExport {
 		if (filePath == "") {
 			return;
 		}
+		
 		/*String filename = "Interessenten-Test.csv";
 		// Dateiformat checken
 		if (!(filename.toLowerCase().endsWith(".csv"))) {
@@ -395,6 +396,15 @@ public class CSVImportExport {
 		else if (response == JFileChooser.CANCEL_OPTION) {
 			// Wenn der User gecancelt hat: Leerstring zurückgeben
 			return "";
+		}
+		
+		if (operation.equals("import")) {
+			// Checken ob die ausgewählte Datei überhaupt existiert. Falls nicht: Erstellen!
+			 File file = new File(filePath);
+			 if (!file.exists()) {		 
+				JOptionPane.showMessageDialog(null, "Import fehlgeschlagen! Die angegebene Datei existiert nicht", "Error", JOptionPane.ERROR_MESSAGE);
+				return "";
+			 }
 		}
 		
 		// Dateipfad zurückgeben
