@@ -1,3 +1,4 @@
+import java.io.File;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -6,7 +7,9 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 
 public class CSVImportExport {
@@ -20,8 +23,14 @@ public class CSVImportExport {
 	
 	public static void exportCSV(int[] selectedRows) {
 		int rowCount = selectedRows.length;
-		System.out.println(rowCount);
-		FileIO.openWriter("Interessenten.csv");
+		String filePath = openFileChooser("export");
+		
+		// Wenn User keine Datei ausgewählt hat: return!
+		if (filePath == "") {
+			return;
+		}
+		
+		FileIO.openWriter(filePath);
 		
 		// Da die Überschrift der ersten Spalte "ID" ist, weist Excel der entstehenden Datei automatisch den Typ SYLK zu. Die folgenden Zeichen helfen Excel, den CSV-Dateityp richtig zu identifizieren
 		// "If \uFEFF appears at the beginning of a file, it typically indicates that the file is encoded in UTF-8"
@@ -76,16 +85,23 @@ public class CSVImportExport {
 	}
 	
 	public static void importCSV() {
-		String filename = "Interessenten-Test.csv";
+		String filePath = openFileChooser("import");
+		
+		// Wenn User keine Datei ausgewählt hat: return!
+		if (filePath == "") {
+			return;
+		}
+		/*String filename = "Interessenten-Test.csv";
 		// Dateiformat checken
 		if (!(filename.toLowerCase().endsWith(".csv"))) {
 			// Datei hat ein falsches Dateiformat
 			JOptionPane.showMessageDialog(null, "Ungültiges Dateiformat! Bitte CSV-Datei auswählen.", "Error", JOptionPane.ERROR_MESSAGE);
 			return;
-		}
+		}*/
 		
 		// Datei öffnen
-		FileIO.openReader(filename);
+		//FileIO.openReader(filename);
+		FileIO.openReader(filePath);
 		
 		// Überschriften checken
 		String[] headers = new String[TableHeaders.getColCount()];
@@ -347,6 +363,42 @@ public class CSVImportExport {
 		}
 	}
 	
-	
+	private static String openFileChooser(String operation) {
+		JFileChooser chooser = new JFileChooser();
+		FileNameExtensionFilter filter = new FileNameExtensionFilter("CSV Dateien (*.csv)", "csv", "CSV");
+		chooser.setFileFilter(filter);
+		
+		String filePath = "Interessenten.csv";
+		
+		int response;
+		if (operation.equals("export")) {
+			// Gibt 0 zurück, wenn eine Datei ausgewählt wurde und 1, wenn keine ausgewählt wurde
+			response = chooser.showSaveDialog(null);			
+		}
+		else {
+			response = chooser.showOpenDialog(null);
+		}
+		
+		// JFileChooser.APPROVE_OPTION ist 0 --> if (response == 0) --> User hat Datei ausgewählt
+		if (response == JFileChooser.APPROVE_OPTION) {
+			File selectedFile = chooser.getSelectedFile();
+			String filename = selectedFile.getName();
+			if (!filename.toLowerCase().endsWith(".csv")) {
+				// Datei ist keine CSV-Datei --> richtige Dateiendung anhängen
+				filePath = selectedFile.getAbsolutePath() + ".csv";
+			}
+			else {
+				filePath = selectedFile.getAbsolutePath();
+			}
+			
+		}
+		else if (response == JFileChooser.CANCEL_OPTION) {
+			// Wenn der User gecancelt hat: Leerstring zurückgeben
+			return "";
+		}
+		
+		// Dateipfad zurückgeben
+		return filePath;
+	}
 	
 }
