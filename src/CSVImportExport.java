@@ -92,162 +92,202 @@ public class CSVImportExport {
 			return;
 		}
 		
-		/*String filename = "Interessenten-Test.csv";
-		// Dateiformat checken
-		if (!(filename.toLowerCase().endsWith(".csv"))) {
-			// Datei hat ein falsches Dateiformat
-			JOptionPane.showMessageDialog(null, "Ungültiges Dateiformat! Bitte CSV-Datei auswählen.", "Error", JOptionPane.ERROR_MESSAGE);
-			return;
-		}*/
-		
 		// Datei öffnen
-		//FileIO.openReader(filename);
 		FileIO.openReader(filePath);
 		
-		// Überschriften checken
-		String[] headers = new String[TableHeaders.getColCount()];
-		String headersStr = FileIO.nextLine().strip();
-		if (headersStr.charAt(0) == '\uFEFF') {
-			headersStr = headersStr.substring(1);
-		}
-		
-		int strlen = headersStr.length();
-		
-		// Checken ob 18 Überschriften (Der JTable und die Datenbank haben 18 Überschriften)
-		int headerNum = 0;
-		String currentHeader = String.valueOf(headersStr.charAt(0));
-		for (int i = 1; i < strlen; i++) {
-			char currentChar = headersStr.charAt(i);
-			if (currentChar == ';') {
-				headerNum++;
-				headers[headerNum - 1] = currentHeader;
-				currentHeader = "";
-			}
-			else if (i == strlen - 1) {
-				headerNum++;
-				currentHeader = currentHeader.concat(String.valueOf(currentChar));
-				headers[headerNum - 1] = currentHeader;
-				break;
-			}
-			else {
-				currentHeader = currentHeader.concat(String.valueOf(currentChar));
-			}
-		}
-		
-		System.out.println(headerNum);
-		
-		// Ist die Anzahl an Überschriften korrekt? --> Wenn nicht: Fehlermeldung
-		if (headerNum != headers.length) {
-			JOptionPane.showMessageDialog(null, "Inkompatible Datei. Es können nur Daten aus CSV-Dateien importiert werden, die mit diesem Programm erzeugt wurden.", "Error", JOptionPane.ERROR_MESSAGE);
+		// Überschriften checken: Die Überschriften im CSV-File sollten mit den Überschriften im JTable übereinstimmen
+		boolean headersOkay = checkHeaders();
+		if (!headersOkay) {
 			return;
 		}
 		
-		// Checken, ob die Headers aus der CSV mit den Headern im JTable übereinstimmen --> Wenn nicht: Fehlermeldung
-		for (int i = 0; i < headerNum; i++) {
-			if (!(headers[i].equals(TableHeaders.getJTableColNameByColIndex(i)))) {
-				// Sobald ein Header nicht übereinstimmt, ist die Datei nicht kompatibel
-				JOptionPane.showMessageDialog(null, "Inkompatible Datei. Es können nur Daten aus CSV-Dateien importiert werden, die mit diesem Programm erzeugt wurden.", "Error", JOptionPane.ERROR_MESSAGE);
-				return;
-			}
-		}
-
-		
 		// Die Überschriften sind kompatibel. Jetzt können wir versuchen, die Daten in die Datenbank zu übertragen
-		int errorCounter = 0;
-		String[] rowValues = new String[TableHeaders.getColCount()];
+		// rowValues: String-Array mit allen "Werten", die in der aktuellen Reihe der CSV-Datei stehen --> Platz im Array: Anzahl von Spalten
+		boolean showErrorMessage = false;
+		//String[] rowValues = new String[TableHeaders.getColCount()];
+		
+		// Solange wir nicht am Ende des Files angekommen sind
 		while (FileIO.hasNext()) {
-			boolean error = false;
+			// Zu Beginn: nächste Reihe aus CSV lesen
 			String currentLine = FileIO.nextLine();
-			int len = currentLine.length();
-					
-			int colNum = 0;
-			String currentValue = String.valueOf(currentLine.charAt(0));
-			for (int i = 1; i < len; i++) {
-				char currentChar = currentLine.charAt(i);
-				if (currentChar == ';') {
-					// 2 Semikolons hintereinander...
-					if (i < len - 1 && currentLine.charAt(i + 1) == ';') {
-						colNum++;
-						rowValues[colNum - 1] = "";
-						currentValue = "";
-					}
-					else {
-						colNum++;
-						rowValues[colNum - 1] = currentValue;
-						currentValue = "";						
-					}
-				}
-				
-				// Am Ende der Reihe
-				else if (i == len - 1) {
-					colNum++;
-					currentValue = currentValue.concat(String.valueOf(currentChar));
-					rowValues[colNum - 1] = currentValue;
-					break;
-				}
-				else {
-					currentValue = currentValue.concat(String.valueOf(currentChar));
-				}
-			}
 			
-			// Erinnerungsspalte ist leer
-			if (colNum == TableHeaders.getColCount() - 1) {
-				rowValues[TableHeaders.getColCount() - 1] = ""; 
-			}
+			// Werte aus den einzelnen Spalten der akt. Zeile in String-Array speichern
+			String[] rowValues = getRowValues(currentLine);
 			
-			// Reihe überprüfen --> Wenn error true ist: Nicht anzeigen
-			// Der ID-Wert wird übersprungen und nicht in die Datenbank geschrieben. Daher müssen wir den Inhalt nicht prüfen
-			// "Priorität" und "Datum" müssen richtig formatiert sein
-			try {
-				int priorityInt = Integer.parseInt(rowValues[TableHeaders.getJTableColNumByJTableColName("Priorität")]);
-				if (priorityInt < 1 || priorityInt > 5) {
-					throw new NumberFormatException();
-				}
-			}
-			catch (NumberFormatException e)  {
-				// Am Ende ErrorMessage anzeigen
-				error = true;
-				errorCounter++;
-			}
+			// Daten in der Zeile überprüfen --> Wenn checkRowData true zurückgibt, sind die Daten nicht mit der DB kompatibel
+			boolean error = checkRowData(rowValues);
 			
-			// Erinnerungsspalte prüfen
-			// Wenn eine Erinnerung gesetzt wurde, muss sie ein Zeitformat haben.
-			if (!error) {
-				SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
-				String dateString = rowValues[TableHeaders.getJTableColNumByJTableColName("Erinnerung")];
-				if (!dateString.equals("")) {
-					try {
-						if (dateString.length() != 10) {
-							throw new Exception();
-						}
-						Date date = dateFormat.parse(dateString);
-						Date currentDate = Calendar.getInstance().getTime();
-						
-						if (!date.after(currentDate)) {
-							error = true;
-							errorCounter++;
-						}
-						
-					}
-					catch (Exception e) {
-						error = true;
-						errorCounter++;
-					}
-				}				
-			}
-			
-			// Inhalt wurde geprüft. Jetzt kann die Zeile zur DB hinzugefügt werden
+			// Inhalt wurde geprüft. Wenn checkRowData false zurückgegeben hat, kann die Zeile zur DB hinzugefügt werden
 			if (!error) {
 				insertNewProspect(rowValues);
+			}
+			// Wenn Kompatibilitätsproblem gefunden und dies die erste Zeile ist, bei der ein Problem aufgetreten ist...
+			else if (!showErrorMessage) {
+				showErrorMessage = true;
 			}
 			
 		}
 		
 		// Zum Schluss: Wenn der Error-Counter größer 0 ist, konnten nicht alle Reihen importiert werden --> Errormessage anzeigen
-		if (errorCounter > 0) {
+		if (showErrorMessage) {
 			JOptionPane.showMessageDialog(null, "Eine oder mehrere Zeilen konnten nicht importiert werden, da sie inkompatible Datenformate beinhalten.", "Error", JOptionPane.ERROR_MESSAGE);
 		}
 		
+	}
+	
+	private static boolean checkRowData(String[] rowValues) {
+		// Checken, ob die Daten in der aktuellen Zeile mit der DB kompatibel sind
+		// Der ID-Wert wird übersprungen und nicht in die Datenbank geschrieben. Daher müssen wir den Inhalt nicht prüfen
+		
+		// Check 1: Priorität muss ein int sein und zwischen 1 und 5 liegen
+		try {
+			int priorityInt = Integer.parseInt(rowValues[TableHeaders.getJTableColNumByJTableColName("Priorität")]);
+			if (priorityInt < 1 || priorityInt > 5) {
+				throw new NumberFormatException();
+			}
+		}
+		catch (NumberFormatException e)  {
+			// Check nicht bestanden!
+			return true;
+		}
+		
+		// Check 2: Erinnerungsspalte prüfen
+		// Wenn eine Erinnerung gesetzt wurde, muss sie ein Zeitformat haben und das Erinnerungsdatum muss nach dem akt. Datum liegen
+		SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
+		String dateString = rowValues[TableHeaders.getJTableColNumByJTableColName("Erinnerung")];
+		if (!dateString.equals("")) {
+			try {
+				if (dateString.length() != 10) {
+					throw new Exception();
+				}
+				Date date = dateFormat.parse(dateString);
+				Date currentDate = Calendar.getInstance().getTime();
+				
+				if (!date.after(currentDate)) {
+					return true;
+				}
+				
+			}
+			catch (Exception e) {
+				return true;
+			}
+		}
+		
+		// Beide Checks bestanden --> Zeile kann zur DB hinzugefügt werden
+		return false;
+	}
+	
+	private static String[] storeRowDataInArray(String currentLine) {
+		String[] rowValues = new String[TableHeaders.getColCount()];
+		int len = currentLine.length();
+		
+		System.out.println(currentLine);
+		
+		int colNum = 0;
+		String currentValue = String.valueOf(currentLine.charAt(0));
+		for (int i = 1; i < len; i++) {
+			char currentChar = currentLine.charAt(i);
+			
+			// Wenn akt. Char ein Semikolon ist: "Spaltenstring" der akt. Spalte zum Array hinzufügen und neuen String für die nächste Spalte beginnen
+			if (currentChar == ';') {
+				rowValues[colNum] = currentValue;
+				currentValue = "";						
+				colNum++;
+			}
+			
+			// Am Ende der Reihe: Letzten Char zum akt. "Spaltenstring" hinzufügen und String ins Array packen
+			else if (i == len - 1) {
+				currentValue = currentValue.concat(String.valueOf(currentChar));
+				rowValues[colNum] = currentValue;
+				colNum++;
+			}
+			
+			// Wenn akt. Char kein Semikolon: Akt. char zum akt. "Spaltenstring" hinzufügen
+			else {
+				currentValue = currentValue.concat(String.valueOf(currentChar));
+			}
+			
+		}
+		
+		return rowValues;
+	}
+	
+	private static String[] getRowValues(String currentLine) {
+		// rowValues: String-Array mit allen "Werten", die in der aktuellen Reihe der CSV-Datei stehen --> Platz im Array: Anzahl von Spalten
+		String[] rowValues = storeRowDataInArray(currentLine);
+		
+		// Wir sind einmal durch den gesamten String mit den Daten der akt. Reihe geloopt
+		// Wenn am Ende weniger Spaltennummern gezählt wurden als die Tabelle Spalten hat, ist die letzte Spalte (hier die Spalte "Erinnerung") leer
+		/*if (colNum == TableHeaders.getColCount() - 1) {
+			// Letzten Index im StringArray zur akt. Reihe mit Leerstring füllen
+			rowValues[TableHeaders.getColCount() - 1] = ""; 
+		}*/
+		
+		if (rowValues[rowValues.length - 1] == null) {
+			rowValues[rowValues.length - 1] = ""; 
+		}
+		
+		return rowValues;
+	}
+	
+	private static boolean checkHeaders() {		
+		// Überschriften stehen in der ersten Zeile der Datei. Wenn BOM Charakter (Byte Mark Order) --> herausschneiden
+		String headersStr = FileIO.nextLine().strip();
+		if (headersStr.charAt(0) == '\uFEFF') {
+			headersStr = headersStr.substring(1);
+		}
+		int strlen = headersStr.length();
+		
+		String[] headers = storeRowDataInArray(headersStr);
+		/*String[] headers = new String[TableHeaders.getColCount()];
+		
+		// Checken ob Anzahl der Überschriften in der CSV mit der Anzahl an Überschriften im JTable übereinstimmt
+		int headerNum = 0;
+		String currentHeader = String.valueOf(headersStr.charAt(0));
+		for (int i = 1; i < strlen; i++) {
+			char currentChar = headersStr.charAt(i);
+			// Wenn akt. Char Semikolon --> String mit akt. Überschrift zum Array hinzufügen und mit einer neuen Überschrift beginnen (String leeren)
+			if (currentChar == ';') {
+				headerNum++;
+				headers[headerNum - 1] = currentHeader;
+				currentHeader = "";
+			}
+			// Beim letzten Zeichen: Letzten Char an akt. Überschrift "anhängen" und letzte Überschrift zum Array hinzufügen
+			else if (i == strlen - 1) {
+				headerNum++;
+				currentHeader = currentHeader.concat(String.valueOf(currentChar));
+				headers[headerNum - 1] = currentHeader;
+				//break;
+			}
+			// Kein Semikolon und nicht das letzte Zeichen: akt. Char zum akt. Header-String hinzufügen
+			else {
+				currentHeader = currentHeader.concat(String.valueOf(currentChar));
+			}
+		}
+		
+		System.out.println(headerNum);*/
+		
+		// Ist die Anzahl an Überschriften korrekt? --> Wenn nicht: Fehlermeldung
+		/*if (headerNum != headers.length) {
+			JOptionPane.showMessageDialog(null, "Inkompatible Datei. Es können nur Daten aus CSV-Dateien importiert werden, die mit diesem Programm erzeugt wurden.", "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
+		}*/
+		if (headers[headers.length - 1] == null) {
+			JOptionPane.showMessageDialog(null, "Inkompatible Datei. Es können nur Daten aus CSV-Dateien importiert werden, die mit diesem Programm erzeugt wurden.", "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
+		}
+		
+		// Checken, ob die Headers aus der CSV mit den Headern im JTable übereinstimmen --> Wenn nicht: Fehlermeldung
+		for (int i = 0; i < headers.length; i++) {
+			if (!(headers[i].equals(TableHeaders.getJTableColNameByColIndex(i)))) {
+				// Sobald ein Header nicht übereinstimmt, ist die Datei nicht kompatibel
+				JOptionPane.showMessageDialog(null, "Inkompatible Datei. Es können nur Daten aus CSV-Dateien importiert werden, die mit diesem Programm erzeugt wurden.", "Error", JOptionPane.ERROR_MESSAGE);
+				return false;
+			}
+		}
+		
+		// Wenn wir an dieser Stelle im Code angekommen sind, sind die Überschriften aus dem CSV-File und die Überschriften im JTable identisch 
+		return true;
 	}
 	
 	// Die GLEICHE METHODE GIBT ES AUCH IN PROSPECTSPOPUP
@@ -393,6 +433,7 @@ public class CSVImportExport {
 			}
 			
 		}
+		
 		else if (response == JFileChooser.CANCEL_OPTION) {
 			// Wenn der User gecancelt hat: Leerstring zurückgeben
 			return "";
