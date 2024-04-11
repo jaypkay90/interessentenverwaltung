@@ -1,71 +1,41 @@
-import java.sql.*;
 import javax.swing.table.*;
-
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
-import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import javax.swing.JMenuBar;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
-
 import java.awt.BorderLayout;
 import javax.swing.SwingConstants;
-import java.awt.Panel;
 import javax.swing.JTable;
 import javax.swing.JLabel;
-import javax.swing.ScrollPaneConstants;
-import java.awt.FlowLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-
 import javax.swing.JTextField;
 import javax.swing.RowFilter;
-
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
-import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.Color;
 
 public class MainFrame extends JFrame implements KeyListener, ActionListener {
 
 	private static final long serialVersionUID = 1L;
 	
 	private JFrame frame;
-	private JPanel contentPane;
 	private JTable table;
-	private DefaultTableModel model;
-	private String[] colNames = TableHeaders.getJTableHeaders();
+	private String[] colNames = TableHeaders.getJTableHeaders();;
 	private Map<String, JTextField> textFieldMap;
-	private TableRowSorter<DefaultTableModel> myTableRowSorter;
 	private List<String> reminderPopupMessages;
 	
 	
@@ -87,7 +57,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		frame.setBounds(100, 100, 800, 500);
 		
 		// Panel für den Content erstellen
-		contentPane = new JPanel();
+		JPanel contentPane = new JPanel();
 		contentPane.setLayout(new BorderLayout());
 		frame.setContentPane(contentPane);
 
@@ -173,10 +143,11 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		// Im CenterPanel werden die Daten aus der Datenbank in einem JTable angezeigt
 		
 		// Daten aus der Datenbank auslesen und in einem TableModel speichern
-		getTableData();
+		reminderPopupMessages = MyTableModel.getTableData();
 		
 		// JTable mit dem zuvor erstellten Tabellenmodell initialisieren
-		table = new JTable(model);
+		//table = new JTable(model);
+		table = new JTable(MyTableModel.getModel());
 		
 		// MouseListener zum JTable hinzufügen
 		table.addMouseListener(new MouseAdapter() {
@@ -195,7 +166,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 				// Struktur der Map --> Key: Spaltenüberschrift, Value: Text in der Zelle der entsprechenden Spalte innerhalb der angeklickten Reihe
 				HashMap<String, String> rowData = new HashMap<>();
 				for (int i = 0; i < colNames.length; i++) {
-					Object tableCellValue = model.getValueAt(selectedRow, i);
+					Object tableCellValue = MyTableModel.getModel().getValueAt(selectedRow, i);
 					String cellValueToString = (tableCellValue != null) ? tableCellValue.toString() : "";
 					rowData.put(colNames[i],cellValueToString);
 				}
@@ -208,7 +179,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		
 		// Scrollbar und TableRowSorter zum JTable hinzufügen
 		JScrollPane scrollPane = new JScrollPane(table);
-		table.setRowSorter(myTableRowSorter);
+		table.setRowSorter(MyTableModel.getMyTableRowSorter());
 		
 		// JPanel erstellen und JScrollPane mit JTable hinzufügen
 		JPanel centerPanel = new JPanel();
@@ -223,114 +194,6 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		for (String message : reminderPopupMessages) {
 			JOptionPane.showMessageDialog(null, message, "Erinnerung", JOptionPane.INFORMATION_MESSAGE);
 		}
-	}
-	
-	private void getTableData() {
-		// TableModel aus der MyTableModel Klasse bekommen
-		model = MyTableModel.getModel();
-		
-		// Überschriften zum TableModel hinzufügen
-		model.setColumnIdentifiers(TableHeaders.getJTableHeaders());
-		
-		// ArrayList mit Reminder-Nachrichten --> Die Nachrichten, die in dieser Liste gespeichert werden, werden nach dem Start des Programms in JOptionPanes angezeigt
-		// In diese Liste kommen kommen Strings mit Reminder-Nachrichten für alle Interessenten, bei denen für das aktuelle Datum eine Erinnerung gesetzt wurde
-		reminderPopupMessages = new ArrayList<>();
-					
-		// Daten aus der DB auslesen und zum TableModel hinzufügen		
-		Statement statement = null;
-		ResultSet rs = null;
-		try {
-			statement = Database.createStatement();
-			rs = statement.executeQuery("SELECT * FROM prospects");
-			
-			// Spaltenanzahl entpricht der Anzahl von Spaltenüberschriften
-			int colCount = TableHeaders.getColCount();
-			
-			// Daten aus der Datenbank auslesen, solange es noch welche gibt...
-			while (rs.next()) {
-				
-				// Für jedes ResultSet: String Array erstellen
-			    String[] row = new String[colCount];
-			    for (int i = 0; i < colCount; i++) {
-			    	
-			    	// Daten aus akt. ResultSet in String abspeichern und zum Array hinzufügen
-			    	String currentRsValue = rs.getString(i + 1);
-			    	row[i] = currentRsValue == null ? "" : currentRsValue;
-			    	
-			    	// Daten für die Spalte "Erinnerung" für die Anzeige in der Tabelle formatieren und zum Array hinzufügen
-			    	if (TableHeaders.getDBColNameByColIndex(i).equals("Erinnerung")) {
-			    		if (!row[i].equals("")) {
-			    			SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
-			    			//dateFormat.setLenient(false);
-			    			Date date = new Date(Long.parseLong(currentRsValue));
-			    			String dateString = dateFormat.format(date);
-			    			row[i] = dateString;
-			    			
-			    			// Checken ob die Erinnerung für das heutige Datum gesetzt ist. Falls ja: PopUp Message anzeigen.
-			    			DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-			    			LocalDate parsedDate = LocalDate.parse(dateString, dateFormatter);
-			    			LocalDate currentDate = LocalDate.now();
-			    			
-			    			if (currentDate.equals(parsedDate)) {
-			    				int idCol = TableHeaders.getJTableColNumByJTableColName("ID");
-			    				int vornameCol = TableHeaders.getJTableColNumByJTableColName("Vorname");
-			    				int nachnameCol = TableHeaders.getJTableColNumByJTableColName("Nachname");
-			    				String message = String.format("Erinnerung für heute gesetzt! Interessenten-ID: %s, Vorname: %s, Nachname: %s", row[idCol], row[vornameCol], row[nachnameCol]);			
-			    				reminderPopupMessages.add(message);
-			    			}   			
-			    		}
-			    	}
-			    }
-			    
-			    // Daten aus dem akt. ResultSet (Reihe) zum Tabellenmodell hinzufügen
-			    model.addRow(row);
-			}
-		}
-		catch (SQLException e) {
-			e.printStackTrace();
-		}
-		finally {
-			Database.closeResultSetAndStatement(rs);
-		}
-		
-		// RowSorter mit Hilfe des Tabellenmodells erstellen
-		myTableRowSorter = new TableRowSorter<>(model);
-		
-		// Die Spalten Priorität und ID sollen beim Sortieren Integers vergleichen, keine Strings. Nur so werden die Zahlen richtig sortiert
-		// Bei den Spalten "PLZ" und "Hausnummer" habe ich die Textsortierung beibehalten, weil die Hausnummer auch andere Zeichen als Ziffern enthalten kann.
-		// Dies gilt in einigen Ländern auch für die PLZ
-		myTableRowSorter.setComparator(TableHeaders.getJTableColNumByJTableColName("ID"), Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
-		myTableRowSorter.setComparator(TableHeaders.getJTableColNumByJTableColName("Priorität"), Comparator.comparingInt(o ->  Integer.parseInt(o.toString())));
-		
-		// Zur Spalte "Erinnerung" wird ein Comparator gesetzt, der die Daten der Erinnerungen vergleicht und die Spalteneinträge entsprechend sortiert
-        Comparator<String> dateComparator = (date1, date2) -> {
-        	// Leerstrings handeln --> Sie sollen in der Tabelle ganz oben/unten erscheinen
-            if (date1 == "") {
-            	// Sind die Spalteneinträge für "Erinnerung" in beiden Reihen leer? --> Gib 0 zurück (Gleicheit)
-            	// Wenn d2 nicht leer ist --> gib -1 zurück --> das "leere" Datum steht in der Tabelle VOR dem validen Datum
-                return (date2 == "") ? 0 : -1;
-            }
-            else if (date2 == "") {
-            	// Datum 2 ist ein Leerstring, Datum 1 nicht --> gib 1 zurück --> das "leere" Datum (hier Datum 2) steht in der Tabelle VOR dem "validen" Datum (hier d1)
-                return 1;
-            }
-        	
-        	try {
-                // Strings in Datum-Datentyp konvertieren
-                SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
-                java.util.Date d1 = dateFormat.parse(date1);
-                java.util.Date d2 = dateFormat.parse(date2);
-                
-                // Daten vergleichen und Ergebnis zurückgeben, wenn d1 vor d2 im Kalender ist, ist der Rückgabewert negativ
-                return d1.compareTo(d2);
-            } catch (ParseException e) {
-            	e.printStackTrace();
-            	return 0;
-            }
-        };
-
-        // Set the comparator for the "Date" column in the TableRowSorter
-        myTableRowSorter.setComparator(TableHeaders.getJTableColNumByJTableColName("Erinnerung"), dateComparator);
 	}
 	
 	// ActionListener für Buttons
@@ -409,7 +272,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		RowFilter<TableModel, Object> compoundFilter = RowFilter.andFilter(colFilters);
 		
 		// Kombinierten Filter zum RowSorter hinzufügen
-		myTableRowSorter.setRowFilter(compoundFilter);
+		MyTableModel.getMyTableRowSorter().setRowFilter(compoundFilter);
 	}
 	
 	private void exportSelectionToCSV() {
@@ -421,7 +284,8 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		int visibleRowCount = 0;
 		for (int i = 0; i < rowCount; i++) {
 			// Checken, ob akt. Reihe sichtbar ist, -1 wird zurückgegeben, wenn die Reihe herausgefiltert wurde
-			int currentRowInModel = myTableRowSorter.convertRowIndexToModel(i);
+			//int currentRowInModel = myTableRowSorter.convertRowIndexToModel(i);
+			int currentRowInModel = MyTableModel.getMyTableRowSorter().convertRowIndexToModel(i);
 			if (currentRowInModel != -1) {
 				visibleRowCount++;
 				
@@ -434,11 +298,5 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		
 		// Auswahl als CSV exportieren
 		CSVImportExport.exportCSV(visibleRows);
-	}
-		
-	private void importCSV() {
-		// Checken, ob File valide
-		// Korrekte Spaltenüberschriften, korrekte Datentypen
-		
 	}
 }

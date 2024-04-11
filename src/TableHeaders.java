@@ -34,26 +34,6 @@ public class TableHeaders {
 		storeColNamesInArrays();
 		buildHeadersStringForInsertQuery();
 		buildHeadersStringForUpdateQuery();
-		
-		
-		/*headers.put("ID", new Object[]{"ID", 0});
-		headers.put("Priorität", new Object[]{"Prioritaet", 1});
-		headers.put("Vorname", new Object[]{"Vorname", 2});
-		headers.put("Nachname", new Object[]{"Nachname", 3});
-		headers.put("Firma", new Object[]{"Firma", 4});
-		headers.put("Branche", new Object[]{"Branche", 5});
-		headers.put("Abteilung", new Object[]{"Abteilung", 6});
-		headers.put("E-Mail", new Object[]{"E_Mail", 7});
-		headers.put("Telefon", new Object[]{"Telefon", 8});
-		headers.put("Bevorzugter Social Media Kanal", new Object[]{"Social_Media", 9});
-		headers.put("Sprache", new Object[]{"Sprache", 10});
-		headers.put("Land", new Object[]{"Land", 11});
-		headers.put("Bundesland", new Object[]{"Bundesland", 12});
-		headers.put("PLZ", new Object[]{"PLZ", 13});
-		headers.put("Stadt", new Object[]{"Stadt", 14});
-		headers.put("Hausnummer", new Object[]{"Hausnummer", 15});
-		headers.put("Interesse an", new Object[]{"Interesse_an", 16});
-		headers.put("Erinnerung", new Object[]{"Erinnerung", 17});*/
 	}
 	
 	public static String getDBColNameByColIndex(int colIndex) {
@@ -128,7 +108,6 @@ public class TableHeaders {
 		
 		String colNamesStr = builder.toString();
 		colNamesStr = colNamesStr.substring(0, builder.length() - 2);
-		System.out.println(colNamesStr);
 		
 		insertQueryHeadersString = colNamesStr.toString();
 	}
