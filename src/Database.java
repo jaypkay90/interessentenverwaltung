@@ -12,6 +12,10 @@ public class Database {
 	private static Statement statement;
 	private static PreparedStatement preparedStatement;
 	
+	static {
+		connectToDatabase();
+	}
+	
 	public static void connectToDatabase() {
 		// JDBC URL
 	    String url = "jdbc:sqlite:prospectsData.db";
@@ -50,7 +54,7 @@ public class Database {
 	
 	public static PreparedStatement createPreparedStatement(String query) {
 		try {
-        	// Wenn Verbindung zur DB besteht: Statement Instanz erstellen
+        	// Wenn Verbindung zur DB besteht: PreparedStatement Instanz erstellen
             if (connect != null) {
                 preparedStatement = connect.prepareStatement(query);
                 return preparedStatement;
@@ -62,6 +66,7 @@ public class Database {
 	}
 	
 	public static void closePreparedStatement(PreparedStatement prep) {
+		// Wenn PreparedStatement Instanz geöffnet: Schließen
 		if (prep != null) {
 			try {
 				prep.close();
@@ -84,6 +89,7 @@ public class Database {
 	
 	
 	public static void closeResultSet(ResultSet rs) {
+		// Wenn ResultSet geöffnet, schließen
 		try {
 	        if (rs != null) {
 	            rs.close();
@@ -120,7 +126,7 @@ public class Database {
 	public static void updateExistingProspect(String[] prospectData, int selectedRow, int userID) {
 		// Existierenden Interessenten updaten
 		String query = TableHeaders.getUpdateQueryHeadersString();
-		updateDatabaseTable(query, prospectData, userID, true);
+		updateDatabaseTable(query, prospectData, userID);
 		MyTableModel.updateExistingProspectInJTable(selectedRow, userID);
 	}
 	
@@ -128,15 +134,20 @@ public class Database {
 		// Neuen Interessenten hinzufügen
 		String colNamesStr = TableHeaders.getInsertQueryHeadersString();
 		String query = String.format("INSERT INTO prospects (%s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", colNamesStr);
-		updateDatabaseTable(query, prospectData, -1, false);
+		
+		// userID wird für das Hinzufügen eines neuen Users nicht gebraucht, daher -1
+		updateDatabaseTable(query, prospectData, -1);
 		MyTableModel.addNewProspectToJTable();
 	}
 	
-	private static void updateDatabaseTable(String query, String[] values, int userID, boolean editUser) {
+	private static void updateDatabaseTable(String query, String[] values, int userID) {
+		/* Aktualisiert die Datenbank, wenn ein neuer Interessent hinzugefügt wurde oder ein bestehender Interessent aktualisiert wurde */
+		
 		PreparedStatement prep = null;
 		try {
 			prep = connect.prepareStatement(query);
 			
+			// Platzhalter im PreparedStatement mit den neuen Interessentenwerten ausfüllen
 			prep.setInt(1, Integer.parseInt(values[0]));
 			prep.setString(2, values[1]);
 			prep.setString(3, values[2]);
@@ -154,7 +165,7 @@ public class Database {
 			prep.setString(15, values[14]);
 			prep.setString(16, values[15]);
 			
-			// Erinnerungsdatum einfügen
+			// Erinnerungsdatum im SQL-Datumsformat in die Datenbank einfügen
 			String dateString = values[16];
 			SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
 			Date date = null;
@@ -172,8 +183,9 @@ public class Database {
 				prep.setDate(17, null);
 			}
 			
-			// Wenn ein existierender Interessent bearbeitet wird, müssen die Daten dieses Interessenten mithilfe der ID in der Datenbank selektiert werden 
-			if(editUser) {
+			// Wenn ein existierender Interessent bearbeitet wird (userID ist vorhanden),
+			// müssen die Daten dieses Interessenten mithilfe der ID in der Datenbank selektiert werden 
+			if(userID != -1) {
 				prep.setInt(18, userID);
 			}
 			
@@ -189,6 +201,7 @@ public class Database {
 	}
 	
 	public static void deleteProspectFromDB(int userID) {
+		// Interessenten aus der DB löschen
 		PreparedStatement prep = null;
 		try {
 			// Eintrag aus der Datenbank löschen

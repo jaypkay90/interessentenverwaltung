@@ -10,6 +10,7 @@ public class TableHeaders {
 	private static String updateQueryHeadersString;
 	
 	static {
+		// headers: LinkedHashMap mit folgendem Aufbau --> Key: Spaltennummer, Value 1: Spaltenname im JTable, Value 2: Spaltenname in der Datenbank
 		headers = new LinkedHashMap<>();
 		headers.put(0, new String[]{"ID", "ID"});
 		headers.put(1, new String[]{"Priorität", "Prioritaet"});
@@ -37,10 +38,12 @@ public class TableHeaders {
 	}
 	
 	public static String getDBColNameByColIndex(int colIndex) {
+		// Bekommt den Spaltenindex als Input und gibt den dazugehörigen Spaltennamen in der Datenbank zurück
 		return dbHeaders[colIndex];
 	}
 	
 	public static String getJTableColNameByColIndex(int colIndex) {
+		// Bekommt den Spaltenindex als Input und gibt den dazugehörigen Spaltennamen im JTable zurück
 		return jTableHeaders[colIndex];
 	}
 
@@ -65,6 +68,7 @@ public class TableHeaders {
 	}
 	
 	public static int getJTableColNumByDbColName(String dbColName) {
+		// Nimmt einen Spaltennamen aus der Datenbank als Input und gibt die Spaltennummer im JTable zurück
 		for (Map.Entry<Integer, String[]> entry : headers.entrySet()) {
 			if (entry.getValue()[1].equals(dbColName)) {
 				return entry.getKey().intValue();
@@ -74,6 +78,7 @@ public class TableHeaders {
 	}
 	
 	public static int getJTableColNumByJTableColName(String tableColName) {
+		// Nimmt einen Spaltennamen aus dem JTable als Input und gibt die Spaltennummer im JTable zurück
 		for (Map.Entry<Integer, String[]> entry : headers.entrySet()) {
 			if (entry.getValue()[0].equals(tableColName)) {
 				return entry.getKey().intValue();
@@ -83,6 +88,7 @@ public class TableHeaders {
 	}
 	
 	private static void storeColNamesInArrays() {
+		// Speichert alle Spaltennamen aus dem JTable und der Datenbank in Arrays
 		jTableHeaders = new String[colCount];
 		dbHeaders = new String[colCount];
 		
@@ -95,27 +101,28 @@ public class TableHeaders {
 	}
 	
 	private static void buildHeadersStringForInsertQuery() {
-		// Diese Methode baut einen String mit allen Spaltennamen in der Datenbank, um diesen String für Queries verwenden zu können
+		// Diese Methode baut einen String mit allen Spaltennamen in der Datenbank auf, um diesen String für Queries verwenden zu können
 		StringBuilder builder = new StringBuilder();
-		String dbHeaders[] = TableHeaders.getDBHeaders();
 		
 		for (String header : dbHeaders) {
-			// Die ID soll nicht vom User eingegeben werden
+			// Die ID soll nicht vom User eingegeben werden, deswegen überspringen wir diesen header
 			if (header != TableHeaders.getDBColNameByColIndex(0)) {
 				builder.append(header + ", ");				
 			}
 		}
 		
 		String colNamesStr = builder.toString();
+		
+		// Das letzte Leerzeichen und Komma abschneiden
 		colNamesStr = colNamesStr.substring(0, builder.length() - 2);
 		
 		insertQueryHeadersString = colNamesStr.toString();
 	}
 	
 	private static void buildHeadersStringForUpdateQuery() {
+		// Diese Methode baut einen String für eine Update Query auf --> ein existierender User wird per ID gesucht und dann seine Daten aktualisiert
 		StringBuilder builder = new StringBuilder();
 		builder.append("UPDATE prospects SET ");
-		int colCount = TableHeaders.getColCount();
 		for (int i = 1; i < colCount; i++) {
 			builder.append(String.format("%s = ?, ", TableHeaders.getDBColNameByColIndex(i)));
 		}

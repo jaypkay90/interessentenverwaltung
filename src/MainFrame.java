@@ -40,9 +40,6 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	
 	
 	public MainFrame() {
-		// Mit Database verbinden
-		Database.connectToDatabase();
-		
 		// Frame erstellen, Icon hinzufügen und andere Grundeigenschaften festlegen
 		frame = new JFrame();
 		ImageIcon icon = new ImageIcon("MainIcon.png");
@@ -85,14 +82,16 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
         searchPanel.setBorder(new EmptyBorder(10, 10, 10, 10)); // 10 px "Padding" an allen Seiten
         searchPanel.add(new JLabel("Suche", SwingConstants.CENTER)); // Text "Suche" wird ganz oben im Panel mittig zentriert angezeigt
         
-        // Die Textfelder und der Name des Feldes werden über eine HashMap "verbunden". So kann festgestellt werden, in welchen Tabellenspalten gefiltert werden soll.
+        // Die Textfelder und die Namen der Felder werden über eine HashMap "verbunden". So kann festgestellt werden, in welchen Tabellenspalten gefiltert werden soll.
         textFieldMap = new HashMap<>();
         
         for (String colName : colNames) {
         	// In jedes Item-Panel kommt eine Überschrift (diese entspricht je einer Spaltenüberschrift des JTables) und ein dazugehöriges Suchfeld
         	JPanel itemPanel = new JPanel(new GridLayout(0, 1, 5, 5)); // keine Reihen, 1 Spalte --> Das Label und das Textfeld werden untereinander in einer Spalte angezeigt
-            JLabel label = new JLabel(colName);
+            JLabel label = new JLabel(colName); // Label mit der Überschrift als Text
             JTextField textField = new JTextField(15); // Breite des Textfeldes: 15px
+
+            // Jedes Textfeld bekommt einen KeyListener
             textField.addKeyListener(this);
             
             // Label mit Überschrift und Textfeld zum Panel hinzufügen
@@ -140,13 +139,13 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	}
 	
 	private JPanel setupCenterPanel() {
-		// Im CenterPanel werden die Daten aus der Datenbank in einem JTable angezeigt
+		/* Im CenterPanel werden die Daten aus der Datenbank in einem JTable angezeigt */
 		
-		// Daten aus der Datenbank auslesen und in einem TableModel speichern
+		// Daten aus der Datenbank auslesen und in einem Tabellenmodell speichern
+		// Währendessen wird eine ArrayList mit allen Prospects erstellt, für die für das heutige Datum eine Erinnerung gesetzt ist
 		reminderPopupMessages = MyTableModel.getTableData();
 		
 		// JTable mit dem zuvor erstellten Tabellenmodell initialisieren
-		//table = new JTable(model);
 		table = new JTable(MyTableModel.getModel());
 		
 		// MouseListener zum JTable hinzufügen
@@ -172,7 +171,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 				}
 				
 				// ProspectsPopUp mit Interessentendaten anzeigen
-				new ProspectsPopUpFrame(rowData, selectedRow);
+				new ProspectsPopUpFrame(frame, rowData, selectedRow);
 			}
 		});
 		
@@ -191,8 +190,9 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	}
 	
 	private void showReminderPopups() {
+		// Anzeigen von PopUpNachrichten für alle User, für die für den akt. Tag eine Erinnerung gesetzt wurde
 		for (String message : reminderPopupMessages) {
-			JOptionPane.showMessageDialog(null, message, "Erinnerung", JOptionPane.INFORMATION_MESSAGE);
+			JOptionPane.showMessageDialog(frame, message, "Erinnerung", JOptionPane.INFORMATION_MESSAGE);
 		}
 	}
 	
@@ -204,13 +204,13 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		switch (command) {
 		case "addNewUser":
 			// Ein neuer User wird hinzugefügt
-			new ProspectsPopUpFrame();
+			new ProspectsPopUpFrame(frame);
 			break;
 		case "exportCSV":
 			exportSelectionToCSV();
 			break;
 		case "importCSV":
-			CSVImportExport.importCSV();
+			CSVImportExport.importCSV(frame);
 			break;
 		case "exit":
 			// App wird komplett geschlossen
@@ -276,6 +276,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 	}
 	
 	private void exportSelectionToCSV() {
+		// Anzahl aller Reihen im JTable
 		int rowCount = table.getRowCount();
 		
 		// Indizes aller sichtbaren Reihen in Array speichern
@@ -283,8 +284,7 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		
 		int visibleRowCount = 0;
 		for (int i = 0; i < rowCount; i++) {
-			// Checken, ob akt. Reihe sichtbar ist, -1 wird zurückgegeben, wenn die Reihe herausgefiltert wurde
-			//int currentRowInModel = myTableRowSorter.convertRowIndexToModel(i);
+			// Checken, ob akt. Reihe sichtbar ist, -1 wird zurückgegeben, wenn die Reihe herausgefiltert wurde und somit nicht sichtbar ist
 			int currentRowInModel = MyTableModel.getMyTableRowSorter().convertRowIndexToModel(i);
 			if (currentRowInModel != -1) {
 				visibleRowCount++;
@@ -297,6 +297,6 @@ public class MainFrame extends JFrame implements KeyListener, ActionListener {
 		}
 		
 		// Auswahl als CSV exportieren
-		CSVImportExport.exportCSV(visibleRows);
+		CSVImportExport.exportCSV(frame, visibleRows);
 	}
 }

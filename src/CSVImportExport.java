@@ -2,18 +2,22 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class CSVImportExport {
+	// Spaltenanzahl: Entspricht Anzahl von Überschriften im JTable/in der DB
 	private static int colCount = TableHeaders.getColCount();
+	private static JFrame frame;
 	
-	/*static {
-		colCount = TableHeaders.getColCount();
-	}*/
-	
-	public static void exportCSV(int[] selectedRows) {
+	public static void exportCSV(JFrame mainFrame, int[] selectedRows) {
+		frame = mainFrame;
+		
+		// selectedRows: int Array mit Indizes der selektierten Reihen im Tabellenmodell, die exportiert werden sollen
 		int rowCount = selectedRows.length;
+		
+		// File Chooser für den Export öffnen
 		String filePath = openFileChooser("export");
 		
 		// Wenn User keine Datei ausgewählt hat: return!
@@ -21,9 +25,11 @@ public class CSVImportExport {
 			return;
 		}
 		
+		// File zum Schreiben öffnen
 		FileIO.openWriter(filePath);
 		
-		// Da die Überschrift der ersten Spalte "ID" ist, weist Excel der entstehenden Datei automatisch den Typ SYLK zu. Die folgenden Zeichen helfen Excel, den CSV-Dateityp richtig zu identifizieren
+		// Da die Überschrift der ersten Spalte "ID" ist, weist Excel der entstehenden Datei automatisch den Typ SYLK zu.
+		// Um den CSV-Dateityp richtig zu identifizieren, wird daher an den Anfang ein BOM-Character gesetzt
 		// "If \uFEFF appears at the beginning of a file, it typically indicates that the file is encoded in UTF-8"
 		FileIO.print('\uFEFF');
 		
@@ -36,7 +42,7 @@ public class CSVImportExport {
 		}
 		
 		// Nach dem Export: Infomessage anzeigen
-		JOptionPane.showMessageDialog(null, "CSV Export erfolgreich!", "Information", JOptionPane.INFORMATION_MESSAGE);
+		JOptionPane.showMessageDialog(frame, "CSV Export erfolgreich!", "Information", JOptionPane.INFORMATION_MESSAGE);
 		
 		FileIO.closeWriter();
 	}
@@ -76,7 +82,10 @@ public class CSVImportExport {
 		}
 	}
 	
-	public static void importCSV() {
+	public static void importCSV(JFrame mainFrame) {
+		frame = mainFrame;
+		
+		// File Chooser für den Import öffnen
 		String filePath = openFileChooser("import");
 		
 		// Wenn User keine Datei ausgewählt hat: return!
@@ -84,7 +93,7 @@ public class CSVImportExport {
 			return;
 		}
 		
-		// Datei öffnen
+		// Datei zum Lesen öffnen
 		FileIO.openReader(filePath);
 		
 		// Überschriften checken: Die Überschriften im CSV-File sollten mit den Überschriften im JTable übereinstimmen
@@ -94,11 +103,13 @@ public class CSVImportExport {
 		}
 		
 		// Die Überschriften sind kompatibel. Jetzt können wir versuchen, die Daten in die Datenbank zu übertragen
+		// Wenn showErrorMessage innerhalb der Schleife true wird, wird am Ende des Prozesses eine Fehlermeldung ausgegeben
+		// Es konnten nicht alle Zeilen importiert werden
 		boolean showErrorMessage = false;
 		
 		// Solange wir nicht am Ende des Files angekommen sind
 		while (FileIO.hasNext()) {
-			// Zu Beginn: nächste Reihe aus CSV lesen
+			// Zu Beginn: Reihe aus CSV lesen
 			String currentLine = FileIO.nextLine();
 			
 			// Werte aus den einzelnen Spalten der akt. Zeile in String-Array speichern
@@ -121,7 +132,7 @@ public class CSVImportExport {
 		
 		// Zum Schluss: Wenn showErrorMessage true ist --> Errormessage anzeigen
 		if (showErrorMessage) {
-			JOptionPane.showMessageDialog(null, "Eine oder mehrere Zeilen konnten nicht importiert werden, da sie inkompatible Daten enthalten.", "Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(frame, "Eine oder mehrere Zeilen konnten nicht importiert werden, da sie inkompatible Daten enthalten.", "Error", JOptionPane.ERROR_MESSAGE);
 		}
 		
 	}
@@ -169,10 +180,15 @@ public class CSVImportExport {
 	}
 	
 	private static String[] storeRowDataInArray(String currentLine) {
+		/* Speichert die Werte der einzelnen Spalten aus der akt. Zeile im CSV-File in einem String-Array */
+		
+		// Größe des Arrays: Anzahl von Überschriften im JTable --> entspricht Spaltenanzahl
 		String[] rowValues = new String[TableHeaders.getColCount()];
 		int len = currentLine.length();
 		
+		// colOverflow: Wird innerhalb der Schleife true, wenn unsere Zeile zu viele Spalten hat --> zu wenig Platz im Array
 		boolean colOverflow = false;
+		
 		int colNum = 0;
 		String currentValue = String.valueOf(currentLine.charAt(0));
 		for (int i = 1; i < len; i++) {
@@ -217,7 +233,7 @@ public class CSVImportExport {
 	}
 	
 	private static String[] getRowValues(String currentLine) {
-		// rowValues: String-Array mit allen "Werten", die in der aktuellen Reihe der CSV-Datei stehen --> Platz im Array: Anzahl von Spalten
+		// rowValues: String-Array mit allen "Werten", die in der aktuellen Reihe der CSV-Datei stehen
 		String[] rowValues = storeRowDataInArray(currentLine);
 		
 		// Wenn der erste Platz im Array null ist, ist die Zeile inkompatibel --> Wir wollen das Array aber so zurückgeben, wie es ist
@@ -230,7 +246,7 @@ public class CSVImportExport {
 	}
 	
 	private static boolean checkHeaders() {		
-		// Überschriften stehen in der ersten Zeile der Datei. Wenn BOM Charakter (Byte Mark Order) --> herausschneiden
+		// Überschriften stehen in der ersten Zeile der Datei. Wenn BOM Charakter (Byte Order Mark) vorhanden --> herausschneiden
 		String headersStr = FileIO.nextLine().strip();
 		if (headersStr.charAt(0) == '\uFEFF') {
 			headersStr = headersStr.substring(1);
@@ -246,7 +262,7 @@ public class CSVImportExport {
 		// Wenn der erste Platz im Array null ist, sind zu wenig Überschriften vorhanden --> Wir haben willentlich den ersten Index im Array auf null gesetzt
 		// Wenn der letzte Platz im Array null ist, ist die Anzahl an Überschriften zu klein
 		if (headers[0] == null || headers[headers.length - 1] == null) {
-			JOptionPane.showMessageDialog(null, message, "Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(frame, message, "Error", JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
 		
@@ -254,7 +270,7 @@ public class CSVImportExport {
 		for (int i = 0; i < headers.length; i++) {
 			if (!(headers[i].equals(TableHeaders.getJTableColNameByColIndex(i)))) {
 				// Sobald ein Header nicht übereinstimmt, ist die Datei nicht kompatibel
-				JOptionPane.showMessageDialog(null, message, "Error", JOptionPane.ERROR_MESSAGE);
+				JOptionPane.showMessageDialog(frame, message, "Error", JOptionPane.ERROR_MESSAGE);
 				return false;
 			}
 		}
@@ -264,25 +280,33 @@ public class CSVImportExport {
 	}
 	
 	private static String openFileChooser(String operation) {
+		/* JFileChooser öffnen, damit der User eine Datei auswählen kann */
+		
 		JFileChooser chooser = new JFileChooser();
+		
+		// Nur CSV-Dateien können ausgewählt werden
 		FileNameExtensionFilter filter = new FileNameExtensionFilter("CSV Dateien (*.csv)", "csv", "CSV");
 		chooser.setFileFilter(filter);
 		
-		String filePath = "Interessenten.csv";
-		
+		String filePath = "";		
 		int response;
+		// operation: Ist entweder "export" oder "import"
 		if (operation.equals("export")) {
-			// Gibt 0 zurück, wenn eine Datei ausgewählt wurde und 1, wenn keine ausgewählt wurde
-			response = chooser.showSaveDialog(null);			
+			// operation ist "export" --> Speichermenü öffnen
+			// chooser.showSaveDialog: Gibt 0 zurück, wenn eine Datei ausgewählt wurde und 1, wenn keine ausgewählt wurde
+			response = chooser.showSaveDialog(frame);			
 		}
 		else {
-			response = chooser.showOpenDialog(null);
+			// operation ist "import" --> Öffnen-Menü öffnen
+			response = chooser.showOpenDialog(frame);
 		}
 		
-		// JFileChooser.APPROVE_OPTION ist 0 --> if (response == 0) --> User hat Datei ausgewählt
+		// JFileChooser.APPROVE_OPTION ist gleich 0 --> if (response == 0) --> User hat Datei ausgewählt
 		if (response == JFileChooser.APPROVE_OPTION) {
 			File selectedFile = chooser.getSelectedFile();
 			String filename = selectedFile.getName();
+			
+			// Checken, ob ausgewählte Datei csv-Datei ist
 			if (!filename.toLowerCase().endsWith(".csv")) {
 				// Datei ist keine CSV-Datei --> richtige Dateiendung anhängen
 				filePath = selectedFile.getAbsolutePath() + ".csv";
@@ -298,11 +322,12 @@ public class CSVImportExport {
 			return "";
 		}
 		
+		// Wenn der User importieren will: Es kann nur eine Datei importiert werden, die exisitiert
 		if (operation.equals("import")) {
-			// Checken ob die ausgewählte Datei überhaupt existiert. Falls nicht: Error anzeigen
+			// Checken ob die ausgewählte Datei überhaupt existiert. Falls nicht: Error anzeigen und Leerstring zurückgeben
 			 File file = new File(filePath);
 			 if (!file.exists()) {		 
-				JOptionPane.showMessageDialog(null, "Import fehlgeschlagen! Die angegebene Datei existiert nicht", "Error", JOptionPane.ERROR_MESSAGE);
+				JOptionPane.showMessageDialog(frame, "Import fehlgeschlagen! Die angegebene Datei existiert nicht", "Error", JOptionPane.ERROR_MESSAGE);
 				return "";
 			 }
 		}

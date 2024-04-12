@@ -15,28 +15,31 @@ private static final long serialVersionUID = 1L;
 private String[] colNames = TableHeaders.getJTableHeaders();
 private HashMap<String, JTextField> prospectData;
 private JFrame frame;
+private JFrame parentFrame;
 private HashMap<String, String> rowData;
 private boolean editUser;
 private int selectedRow;
 
 		
-	public ProspectsPopUpFrame() {
+	public ProspectsPopUpFrame(JFrame parentFrame) {
+		// Frame wurde geöffnet, um einen neuen Interessenten hinzuzufügen
 		editUser = false;
+		this.parentFrame = parentFrame;
 		setUpFrame();
 	}
 	
-	public ProspectsPopUpFrame(HashMap<String, String> rowData, int selectedRow) {
+	public ProspectsPopUpFrame(JFrame parentFrame, HashMap<String, String> rowData, int selectedRow) {
+		// Frame wurde geöffnet, um einen existierenden Interessenten zu bearbeiten
+		// rowData: Die Interessentendaten (wurden aus dem JTable gelesen)
+		// selectedRow: Die im Tabellenmodell ausgewählte Reihe
 		editUser = true;
+		this.parentFrame = parentFrame;
 		this.rowData = rowData;
 		this.selectedRow = selectedRow;
 		setUpFrame();
 	}
 	
 	private void setUpFrame() {
-		// An dieser Stelle besteht normalerweise schon eine Connection zur DB --> man hätte theoretisch eine getterMethode verwenden können
-		// Vorteil hierbei: Sollte die Connection aus irgendeinem Grund abgebrochen sein, wird sie neu erstellt, sollte sie bestehen, ändert sich nichts
-		Database.connectToDatabase();
-		
 		// prospectData: HashMap, bei der jede Spaltenüberschrift aus der Tabelle mit einem JTextfield verbunden wird.
 		// Mir Hilfe dieser Map können die Usereingaben zu den verschiedenen Spalten eingegeben werden
 		prospectData = new HashMap<>();
@@ -47,6 +50,9 @@ private int selectedRow;
 		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE); 
 		frame.setResizable(false);
 		frame.setLayout(new BorderLayout(10, 10));
+		
+		// Location setzen: Relativ zum MainFrame --> Dieser soll der parentFrame sein und wurde als Parameter übergeben
+		frame.setLocationRelativeTo(parentFrame);
 		
 		// Icon hinzufügen
 		ImageIcon image = new ImageIcon("MainIcon.png");
@@ -93,7 +99,7 @@ private int selectedRow;
 	}
 	
 	private void addInputFields(JPanel userDataInputPanel) {
-		// Input-Textfelder mit Überschriften zum Panel für den userInput hinzufügen
+		/* Input-Textfelder mit Überschriften zum Panel für den userInput hinzufügen */
 		
 		// Durch alle Spaltenüberschriften loopen
 		for (int i = 0; i < colNames.length; i++) {
@@ -113,7 +119,7 @@ private int selectedRow;
 				inputField.setEnabled(false);
 			}
 			
-			// Aktuellen Eintrag im UserData dictionary abspeichern, Key: Spaltenüberschrift, Value: Das dazugehörige Textfeld
+			// Aktuellen Eintrag im prospectData dictionary abspeichern, Key: Spaltenüberschrift, Value: Das dazugehörige Textfeld
 			prospectData.put(colNames[i], inputField);
 			
 			// Label mit Überchrift und Textfeld zum itemPanel hinzufügen
@@ -139,27 +145,15 @@ private int selectedRow;
 				return;
 			}
 
-			// Values aus den Testfeldern im prospectData dict in Array speichern
-			String[] prospectDataString = {prospectData.get(TableHeaders.getJTableColNameByColIndex(1)).getText(), 
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(2)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(3)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(4)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(5)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(6)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(7)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(8)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(9)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(10)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(11)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(12)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(13)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(14)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(15)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(16)).getText(),
-					prospectData.get(TableHeaders.getJTableColNameByColIndex(17)).getText()};
+			// Values aus den Testfeldern im prospectData dict in Array speichern --> Größe: colCount - 1, weil die ID nicht ins Array soll
+			int colCount = TableHeaders.getColCount() - 1;
+			String[] prospectDataString = new String[colCount];
+			for (int i = 0; i < colCount; i++) {
+				prospectDataString[i] = prospectData.get(TableHeaders.getJTableColNameByColIndex(i + 1)).getText();
+			}
 			
 			if (editUser) {
-				// Existierenden Interessenten updaten
+				// Existierenden Interessenten updaten --> Hierzu brauchen wir die UserID
 				int userID = Integer.parseInt(prospectData.get(TableHeaders.getDBColNameByColIndex(0)).getText()); // 0: ID
 				Database.updateExistingProspect(prospectDataString, selectedRow, userID);
 			}
@@ -175,6 +169,8 @@ private int selectedRow;
 	}
 
 	private boolean checkUserInputValidity() {
+		/* Validität des User-Inputs checken */
+		
 		// Der Input ist nicht valide, wenn keine Interessentendaten eigegeben wurden
 		int emptyTextFields = 0;
 		
@@ -185,13 +181,14 @@ private int selectedRow;
 			}
 		}
 		
+		// Sind alle editierbaren Textfelder leer? --> PopUpNachricht anzeigen und return
 		if (emptyTextFields == colNames.length - 1) {
-			JOptionPane.showMessageDialog(null, "Bitte geben Sie Interessentendaten ein", "Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(frame, "Bitte geben Sie Interessentendaten ein", "Error", JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
 		
 		// Der Input im InputField "Priorität" ist nur dann valide, wenn ein int zwischen 1 und 5 eingeben wurde
-		String priorityString = prospectData.get(TableHeaders.getJTableColNameByColIndex(1)).getText();
+		String priorityString = prospectData.get(TableHeaders.getJTableColNameByColIndex(1)).getText(); // 1: Priorität
 		if (!priorityString.equals("")) {
 			try {
 				int priorityInt = Integer.parseInt(priorityString);
@@ -200,34 +197,38 @@ private int selectedRow;
 				}
 			}
 			catch (NumberFormatException e) {
-				JOptionPane.showMessageDialog(null, "Priorität muss eine Ganzzahl zwischen 1 und 5 sein", "Error", JOptionPane.ERROR_MESSAGE);
+				JOptionPane.showMessageDialog(frame, "Priorität muss eine Ganzzahl zwischen 1 und 5 sein", "Error", JOptionPane.ERROR_MESSAGE);
 				return false;
 			}
 		}
-		// Wenn der User keine Priorität eingegben hat, wird sie automatisch auf 1 gesetzt
+		
+		// Wenn der User gar keine Priorität eingegben hat, wird sie automatisch auf 1 gesetzt
 		else {
 			prospectData.get(TableHeaders.getJTableColNameByColIndex(1)).setText("1");
 		}
 		
 		// Wenn eine Erinnerung gesetzt wurde, muss sie ein Zeitformat haben.
 		SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
-		String dateString = prospectData.get(TableHeaders.getJTableColNameByColIndex(17)).getText();
+		String dateString = prospectData.get(TableHeaders.getJTableColNameByColIndex(17)).getText(); // 17: Erinnerung
+		
+		// Hat der User etwas in das Feld "Erinnerung" eingetragen? --> Wenn ja...
 		if (!dateString.equals("")) {
 			try {
 				if (dateString.length() != 10) {
 					throw new Exception();
-				}
+				}				
 				Date date = dateFormat.parse(dateString);
-				Date currentDate = Calendar.getInstance().getTime();
 				
+				// Das Erinnerungsdatum muss in der Zukunft liegen
+				Date currentDate = Calendar.getInstance().getTime();
 				if (!date.after(currentDate)) {
-					JOptionPane.showMessageDialog(null, "Erinnerungsdatum muss in der Zukunft liegen", "Error", JOptionPane.ERROR_MESSAGE);
+					JOptionPane.showMessageDialog(frame, "Erinnerungsdatum muss in der Zukunft liegen", "Error", JOptionPane.ERROR_MESSAGE);
 					return false;
 				}
 				
 			}
 			catch (Exception e) {
-				JOptionPane.showMessageDialog(null, "Erinnerung bitte im Format TT.MM.JJJJ eintragen", "Error", JOptionPane.ERROR_MESSAGE);
+				JOptionPane.showMessageDialog(frame, "Erinnerung bitte im Format TT.MM.JJJJ eintragen", "Error", JOptionPane.ERROR_MESSAGE);
 				return false;
 			}
 		}
