@@ -1,8 +1,7 @@
-
 public class MainApp {
 
 	public static void main(String[] args) {
-		// MainFrame öffnen
+		// Main Frame öffnen
 		new MainFrame();
 	}
 

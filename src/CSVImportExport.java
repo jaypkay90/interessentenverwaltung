@@ -259,7 +259,7 @@ public class CSVImportExport {
 		String message = "Inkompatible Datei. Es können nur Daten aus CSV-Dateien importiert werden, die mit diesem Programm erzeugt wurden.";
 		
 		// Es müssen genausoviele Überschriften in der CSV-Datei stehen, wie Platz im Array ist
-		// Wenn der erste Platz im Array null ist, sind zu wenig Überschriften vorhanden --> Wir haben willentlich den ersten Index im Array auf null gesetzt
+		// Wenn der erste Platz im Array null ist, sind zu viele Überschriften vorhanden --> Wir haben willentlich den ersten Index im Array auf null gesetzt
 		// Wenn der letzte Platz im Array null ist, ist die Anzahl an Überschriften zu klein
 		if (headers[0] == null || headers[headers.length - 1] == null) {
 			JOptionPane.showMessageDialog(frame, message, "Error", JOptionPane.ERROR_MESSAGE);
